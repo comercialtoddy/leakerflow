@@ -21,6 +21,9 @@ from utils.config import config
 from datetime import datetime
 import traceback
 
+# Import default thinking budget from Gemini prompt
+from agent.prompts.gemini_prompt import DEFAULT_THINKING_BUDGET
+
 # litellm.set_verbose=True
 litellm.modify_params=True
 
@@ -28,6 +31,8 @@ litellm.modify_params=True
 MAX_RETRIES = 3
 RATE_LIMIT_DELAY = 30
 RETRY_DELAY = 5
+RETRY_DELAY_BASE = 1  # Base delay in seconds
+DELAY_FACTOR = 2  # Exponential backoff factor
 
 class LLMError(Exception):
     """Base exception for LLM-related errors."""
@@ -166,8 +171,8 @@ def prepare_params(
         
         # Add thinking if enabled
         if enable_thinking:
-            # Use thinking budget if specified
-            thinking_budget = 1024  # Default budget
+            # Use default thinking budget from Gemini prompt
+            thinking_budget = DEFAULT_THINKING_BUDGET
             params["thinking_config"] = {
                 "thinking_budget": thinking_budget
             }

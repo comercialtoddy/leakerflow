@@ -19,7 +19,9 @@ from agent.tools.sb_files_tool import SandboxFilesTool
 from agent.tools.sb_browser_tool import SandboxBrowserTool
 from agent.tools.data_providers_tool import DataProvidersTool
 from agent.prompt import get_system_prompt
-from utils import logger
+# Import Gemini-specific prompt
+from agent.prompts.gemini_prompt import get_gemini_prompt
+from utils.logger import logger
 from utils.auth_utils import get_account_id_from_thread
 from services.billing import check_billing_status
 from agent.tools.sb_vision_tool import SandboxVisionTool
@@ -74,7 +76,15 @@ async def run_agent(
     if config.RAPID_API_KEY:
         thread_manager.add_tool(DataProvidersTool)
 
-    system_message = { "role": "system", "content": get_system_prompt() }
+    # Select the appropriate prompt based on the model
+    if "gemini" in model_name.lower():
+        system_prompt = get_gemini_prompt()
+        logger.info(f"Using Gemini-specific prompt for model: {model_name}")
+    else:
+        system_prompt = get_system_prompt()
+        logger.info(f"Using standard prompt for model: {model_name}")
+
+    system_message = { "role": "system", "content": system_prompt }
 
     iteration_count = 0
     continue_execution = True
@@ -98,7 +108,13 @@ async def run_agent(
         latest_message = await client.table('messages').select('*').eq('thread_id', thread_id).in_('type', ['assistant', 'tool', 'user']).order('created_at', desc=True).limit(1).execute()  
         if latest_message.data and len(latest_message.data) > 0:
             message_type = latest_message.data[0].get('type')
-            if message_type == 'assistant':
+            # For Gemini models, only stop execution if explicitly using 'ask' or 'complete' tools
+            # Otherwise, let it continue running until a tool call is made
+            if "gemini" in model_name.lower():
+                if message_type == 'assistant':
+                    logger.info(f"Last message was from assistant but continuing execution for Gemini model: {model_name}")
+                    pass
+            elif message_type == 'assistant':
                 print(f"Last message was from assistant, stopping execution")
                 continue_execution = False
                 break
@@ -243,6 +259,7 @@ async def run_agent(
         # Check if we should stop based on the last tool call
         if last_tool_call in ['ask', 'complete', 'web-browser-takeover']:
             print(f"Agent decided to stop with tool: {last_tool_call}")
+            logger.info(f"Agent using {model_name} decided to stop with tool: {last_tool_call}")
             continue_execution = False
 
 
