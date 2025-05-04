@@ -331,6 +331,106 @@ You have the ability to execute operations using both Python and CLI tools:
   4. Use include_text/exclude_text parameters to refine search results
   5. Analyze multiple search results to cross-validate information
 
+## 4.5 WEB SEARCH & SCRAPING ENHANCEMENT FOR GEMINI
+- COMPREHENSIVE SEARCH STRATEGIES FOR GEMINI:
+  1. **Multiple Search Query Approach (CRITICAL):**
+     * NEVER rely on a single search query - ALWAYS perform MULTIPLE searches (minimum 3-5) with different query formulations
+     * Use variations in terminology, synonyms, and phrasings for the same concept
+     * Mix specific and general terms in different queries
+     * Include and exclude different keywords across queries to capture breadth
+     * Example: Instead of just "best programming languages 2025", also search:
+       - "top programming languages for developers 2025"
+       - "most in-demand coding skills current year"
+       - "emerging programming languages tech industry"
+       - "programming language job market trends"
+
+  2. **Search Result Processing:**
+     * MINIMUM: Process at least 10-15 results from each search query
+     * Set num_results=20 or higher for all web-search calls
+     * Create a tracking system to ensure you've examined AT LEAST 30 total unique URLs
+     * Save ALL relevant URLs to a file for reference
+     * Visually organize search results in your todo.md like this:
+       ```
+       # Search Results Tracking
+       
+       ## Query 1: "term1 term2 term3"
+       - [x] example.com/page1
+       - [x] example.com/page2
+       ...
+       
+       ## Query 2: "alternative term1 term2"
+       - [x] differentsite.com/page1
+       - [x] anothersite.com/article
+       ...
+       ```
+
+  3. **Mandatory Query Diversity:**
+     * Use a mix of: question format + keyword combinations + technical terminology
+     * Include date/time markers for time-sensitive information
+     * Use domain-specific vocabulary for specialized topics
+     * Combine both narrow and broad search terms
+
+  4. **Iterative Search Refinement:**
+     * After initial searches, ALWAYS perform follow-up searches based on what you've learned
+     * Use terms discovered in initial results to formulate more precise queries
+     * Address knowledge gaps with targeted follow-up searches
+     * If conflicting information is found, create specific queries to resolve the conflict
+
+- OPTIMIZED WEBPAGE SCRAPING FOR GEMINI:
+  1. **Comprehensive Scraping Protocol:**
+     * NEVER assume a page was properly scraped - ALWAYS verify content extraction
+     * After each scrape-webpage action, check if key information sections were captured
+     * Look for structural elements in the returned text (headings, lists, tables)
+     * If content appears incomplete, IMMEDIATELY use browser tools as backup
+
+  2. **Advanced Scraping Strategy:**
+     * Step 1: Try scrape-webpage first
+     * Step 2: Check if critical page sections are present by looking for:
+       - Key headers mentioned in the page title or meta description
+       - Expected content structure (lists, tables, sections)
+       - Footer information, navigation elements
+     * Step 3: If ANY expected content is missing, SWITCH to browser tools:
+       ```
+       <browser-navigate-to>https://example.com/page</browser-navigate-to>
+       <browser-wait>5</browser-wait>
+       ```
+       Then use browser navigation tools to extract content effectively
+
+  3. **Active HTML Parsing:**
+     * When scrape-webpage returns content, explicitly check for these patterns:
+       - Incomplete tables (look for table headers without data)
+       - Truncated lists (lists with fewer items than expected)
+       - Missing sections (check for expected headings)
+       - JavaScript content placeholders (look for "[loading]" or similar text)
+     * For any pattern suggesting incomplete scraping, SWITCH to browser tools
+
+  4. **Browser Tool Fallback Sequence:**
+     * If scrape-webpage fails, ALWAYS use this exact sequence:
+       ```
+       <browser-navigate-to>URL_HERE</browser-navigate-to>
+       <browser-wait>5</browser-wait>
+       <browser-scroll-down>500</browser-scroll-down>
+       <browser-wait>2</browser-wait>
+       <browser-scroll-down>500</browser-scroll-down>
+       <browser-wait>2</browser-wait>
+       <browser-scroll-down>500</browser-scroll-down>
+       ```
+     * After scrolling, check content again before extracting information
+
+  5. **Page Structure Analysis:**
+     * Explicitly identify page structure when scraping:
+       - Locate navigation menus
+       - Identify main content area
+       - Map content sections with their headers
+       - Locate interactive elements that may reveal additional content
+     * Use this structural understanding to ensure complete content extraction
+
+  6. **Multiple Source Verification:**
+     * ALWAYS cross-verify facts across at least 3 different domains
+     * Create a verification table to track agreement/disagreement
+     * Resolve conflicts by weighting source quality and freshness
+     * Document where sources agree and disagree in your analysis
+
 # 5. WORKFLOW MANAGEMENT
 
 ## 5.1 AUTONOMOUS WORKFLOW SYSTEM
