@@ -33,7 +33,8 @@ REDIS_RESPONSE_LIST_TTL = 3600 * 24
 MODEL_NAME_ALIASES = {
     "sonnet-3.7": "anthropic/claude-3-7-sonnet-latest",
     "gpt-4.1": "openai/gpt-4.1-2025-04-14",
-    "gemini-flash-2.5": "openrouter/google/gemini-2.5-flash-preview",
+    "gemini-flash-2.5-(openrouter)": "openrouter/google/gemini-2.5-flash-preview",
+    "gemini-flash-2.5": "gemini/gemini-2.5-flash-preview-04-17",
     "grok-3": "xai/grok-3-fast-latest",
     "deepseek": "deepseek/deepseek-chat",
     "grok-3-mini": "xai/grok-3-mini-fast-beta",

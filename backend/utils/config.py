@@ -116,6 +116,7 @@ class Configuration:
     OPENROUTER_API_BASE: Optional[str] = "https://openrouter.ai/api/v1"
     OR_SITE_URL: Optional[str] = None
     OR_APP_NAME: Optional[str] = "Suna.so"    
+    GEMINI_API_KEY: Optional[str] = None
     
     # AWS Bedrock credentials
     AWS_ACCESS_KEY_ID: Optional[str] = None
