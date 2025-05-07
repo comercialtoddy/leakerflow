@@ -114,6 +114,7 @@ class Configuration:
     GROQ_API_KEY: Optional[str] = None
     OPENROUTER_API_KEY: Optional[str] = None
     OPENROUTER_API_BASE: Optional[str] = "https://openrouter.ai/api/v1"
+    GEMINI_API_KEY: Optional[str] = None
     OR_SITE_URL: Optional[str] = "https://suna.so"
     OR_APP_NAME: Optional[str] = "Kortix Suna"    
     

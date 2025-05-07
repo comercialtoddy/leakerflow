@@ -19,23 +19,42 @@ export interface ModelOption {
 export const MODEL_OPTIONS: ModelOption[] = [
   { 
     id: 'deepseek', 
-    label: 'Free', 
+    label: 'DeepSeek', 
     requiresSubscription: false,
     description: 'Limited capabilities. Upgrade for full performance.'
   },
   { 
-    id: 'sonnet-3.7', 
-    label: 'Standard', 
+    id: 'gemini-2.5-pro-preview-05-06', 
+    label: 'Gemini 2.5 Pro', 
     requiresSubscription: true, 
     description: 'Excellent for complex tasks and nuanced conversations'
   },
+  { 
+    id: 'gemini-2.5-flash-preview-04-17', 
+    label: 'Gemini Flash 2.5', 
+    requiresSubscription: true, 
+    description: 'Excellent for complex tasks and nuanced conversations'
+  },
+  { 
+    id: 'gemini-2.5-pro-experimental-03-25', 
+    label: 'Gemini 2.5 Pro Experimental', 
+    requiresSubscription: true, 
+    description: 'Excellent for complex tasks and nuanced conversations'
+  },
+  { 
+    id: 'sonnet-3.7', 
+    label: 'Claude 3.7 Sonnet', 
+    requiresSubscription: true, 
+    description: 'Excellent for complex tasks and nuanced conversations'
+  },
+  
 ];
 
 export const canAccessModel = (
   subscriptionStatus: SubscriptionStatus,
   requiresSubscription: boolean,
 ): boolean => {
-  return subscriptionStatus === 'active' || !requiresSubscription;
+  return true;
 };
 
 export const useModelSelection = () => {
