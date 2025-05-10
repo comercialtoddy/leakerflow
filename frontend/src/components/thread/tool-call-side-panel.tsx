@@ -22,6 +22,7 @@ import { WebCrawlToolView } from './tool-views/WebCrawlToolView';
 import { WebScrapeToolView } from './tool-views/WebScrapeToolView';
 import { DataProviderToolView } from './tool-views/DataProviderToolView';
 import { ExposePortToolView } from './tool-views/ExposePortToolView';
+import { SourcesToolView } from './tool-views/SourcesToolView';
 
 // Simple input interface
 export interface ToolCallInput {
@@ -157,6 +158,19 @@ function getToolView(
     case 'get-data-provider-endpoints':
       return (
         <DataProviderToolView
+          name={normalizedToolName}
+          assistantContent={assistantContent}
+          toolContent={toolContent}
+          assistantTimestamp={assistantTimestamp}
+          toolTimestamp={toolTimestamp}
+          isSuccess={isSuccess}
+          isStreaming={isStreaming}
+        />
+      );
+    case 'add-source':
+    case 'extract-sources':
+      return (
+        <SourcesToolView
           name={normalizedToolName}
           assistantContent={assistantContent}
           toolContent={toolContent}
