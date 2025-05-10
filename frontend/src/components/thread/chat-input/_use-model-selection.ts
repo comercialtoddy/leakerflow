@@ -25,6 +25,12 @@ export const MODEL_OPTIONS: ModelOption[] = [
     description: 'Limited capabilities. Upgrade for full performance.'
   },
   { 
+    id: 'gemini-2.5-flash-preview-04-17', 
+    label: 'Free Two', 
+    requiresSubscription: false, 
+    description: 'Limited capabilities. Upgrade for full performance.'
+  },
+  { 
     id: 'sonnet-3.7', 
     label: 'Standard', 
     requiresSubscription: true, 

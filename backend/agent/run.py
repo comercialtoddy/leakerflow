@@ -107,7 +107,13 @@ async def run_agent(
         latest_message = await client.table('messages').select('*').eq('thread_id', thread_id).in_('type', ['assistant', 'tool', 'user']).order('created_at', desc=True).limit(1).execute()
         if latest_message.data and len(latest_message.data) > 0:
             message_type = latest_message.data[0].get('type')
-            if message_type == 'assistant':
+            # For Gemini models, only stop execution if explicitly using 'ask' or 'complete' tools
+            # Otherwise, let it continue running until a tool call is made
+            if "gemini" in model_name.lower():
+                if message_type == 'assistant':
+                    logger.info(f"Last message was from assistant but continuing execution for Gemini model: {model_name}")
+                    pass
+            elif message_type == 'assistant':
                 logger.info(f"Last message was from assistant, stopping execution")
                 continue_execution = False
                 break
