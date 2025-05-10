@@ -37,13 +37,16 @@ class LLMRetryError(LLMError):
 
 def setup_api_keys() -> None:
     """Set up API keys from environment variables."""
-    providers = ['OPENAI', 'ANTHROPIC', 'GROQ', 'OPENROUTER']
+    providers = ['OPENAI', 'ANTHROPIC', 'GROQ', 'OPENROUTER', 'GEMINI']
     for provider in providers:
         key = getattr(config, f'{provider}_API_KEY')
         if key:
             logger.debug(f"API key set for provider: {provider}")
         else:
             logger.warning(f"No API key found for provider: {provider}")
+            # Explicitly set environment variables for providers that need it
+            if provider == 'GEMINI':
+                os.environ["GEMINI_API_KEY"] = key
 
     # Set up OpenRouter API base if not already set
     if config.OPENROUTER_API_KEY and config.OPENROUTER_API_BASE:
@@ -154,6 +157,25 @@ def prepare_params(
         if not model_id and "anthropic.claude-3-7-sonnet" in model_name:
             params["model_id"] = "arn:aws:bedrock:us-west-2:935064898258:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0"
             logger.debug(f"Auto-set model_id for Claude 3.7 Sonnet: {params['model_id']}")
+
+    # Add Gemini-specific parameters
+    if "gemini" in model_name.lower():
+        logger.debug(f"Preparing Gemini parameters for model: {model_name}")
+
+        # Add thinking if enabled
+        if enable_thinking:
+            # Use default thinking budget from Gemini prompt
+            thinking_budget = 1024
+            params["thinking_config"] = {
+                "thinking_budget": thinking_budget
+            }
+            logger.info(f"Gemini thinking enabled with budget={thinking_budget} tokens")
+        else:
+            # Set thinking_budget to 0 if thinking is disabled
+            params["thinking_config"] = {
+                "thinking_budget": 0
+            }
+            logger.info(f"Gemini thinking disabled, budget=0 tokens")
 
     # Apply Anthropic prompt caching (minimal implementation)
     # Check model name *after* potential modifications (like adding bedrock/ prefix)
