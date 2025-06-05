@@ -10,6 +10,9 @@ import { GoogleAnalytics } from '@next/third-parties/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import Script from 'next/script';
 
+// Import StagewiseToolbar for development mode only
+const StagewiseToolbar = process.env.NODE_ENV === 'development' ? require('@stagewise/toolbar-next').StagewiseToolbar : null;
+
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
@@ -107,6 +110,11 @@ export const metadata: Metadata = {
   },
 };
 
+// Stagewise configuration
+const stagewiseConfig = {
+  plugins: []
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -153,6 +161,9 @@ export default function RootLayout({
           <Analytics />
           <GoogleAnalytics gaId="G-6ETJFB3PT3" />
           <SpeedInsights />
+          {process.env.NODE_ENV === 'development' && StagewiseToolbar && (
+            <StagewiseToolbar config={stagewiseConfig} />
+          )}
         </ThemeProvider>
       </body>
     </html>
