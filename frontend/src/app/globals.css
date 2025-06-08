@@ -669,3 +669,40 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
+
+/* Article content styles */
+.prose {
+  @apply text-foreground;
+}
+
+.prose h2 {
+  @apply text-2xl font-bold text-foreground mt-8 mb-4;
+}
+
+.prose h3 {
+  @apply text-xl font-semibold text-foreground mt-6 mb-3;
+}
+
+.prose p {
+  @apply text-foreground/90 leading-relaxed mb-4;
+}
+
+.prose ul {
+  @apply text-foreground/90 mb-4 pl-6;
+}
+
+.prose li {
+  @apply mb-2;
+}
+
+.prose strong {
+  @apply font-semibold text-foreground;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-primary/20 bg-muted/50 pl-4 py-2 my-6 italic text-foreground/80;
+}
+
+.dark .prose blockquote {
+  @apply border-primary/30 bg-muted/30;
+}

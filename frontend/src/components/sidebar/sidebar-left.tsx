@@ -149,6 +149,9 @@ export function SidebarLeft({
                   <Compass className="h-4 w-4 mr-2" />
                   <span className="flex items-center justify-between w-full">
                     Discover
+                    <Badge variant="new">
+                      New
+                    </Badge>
                   </span>
                 </SidebarMenuButton>
               </Link>

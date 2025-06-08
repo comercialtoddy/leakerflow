@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ContentItem } from '@/types/discover';
+import { useRouter } from 'next/navigation';
 
 interface ContentHeroProps {
   content: ContentItem;
@@ -11,10 +12,28 @@ interface ContentHeroProps {
 }
 
 export function ContentHero({ content, onBookmarkToggle }: ContentHeroProps) {
+  const router = useRouter();
   const timeAgo = formatDistanceToNow(new Date(content.publishedAt), { addSuffix: true });
 
+  const handleCardClick = () => {
+    router.push(`/discover/${content.id}`);
+  };
+
+  const handleBookmarkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onBookmarkToggle();
+  };
+
+  const handleReadMoreClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(`/discover/${content.id}`);
+  };
+
   return (
-    <article className="group cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl">
+    <article 
+      className="group cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
+      onClick={handleCardClick}
+    >
       <div className="bg-card rounded-xl overflow-hidden border border-border/50 hover:border-primary/20 hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.2)]">
         {/* Principle 3: The Image - Primary element, largest part */}
         <div className="relative aspect-[4/1] overflow-hidden">
@@ -34,10 +53,7 @@ export function ContentHero({ content, onBookmarkToggle }: ContentHeroProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onBookmarkToggle();
-              }}
+              onClick={handleBookmarkClick}
               className={cn(
                 "bg-background/80 backdrop-blur hover:bg-background/90 transition-all duration-200 h-6 w-6 p-0",
                 content.bookmarked 
@@ -82,7 +98,12 @@ export function ContentHero({ content, onBookmarkToggle }: ContentHeroProps) {
             </div>
 
             {/* Read more indicator */}
-            <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-6 px-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-6 px-2"
+              onClick={handleReadMoreClick}
+            >
               <span className="text-xs font-medium">Read more</span>
               <ExternalLink className="h-3 w-3 ml-1" />
             </Button>

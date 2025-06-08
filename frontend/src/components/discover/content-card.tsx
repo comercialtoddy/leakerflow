@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ContentItem } from '@/types/discover';
+import { useRouter } from 'next/navigation';
 
 interface ContentCardProps {
   content: ContentItem;
@@ -11,10 +12,23 @@ interface ContentCardProps {
 }
 
 export function ContentCard({ content, onBookmarkToggle }: ContentCardProps) {
+  const router = useRouter();
   const timeAgo = formatDistanceToNow(new Date(content.publishedAt), { addSuffix: true });
 
+  const handleCardClick = () => {
+    router.push(`/discover/${content.id}`);
+  };
+
+  const handleBookmarkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onBookmarkToggle();
+  };
+
   return (
-    <article className="group cursor-pointer transform transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+    <article 
+      className="group cursor-pointer transform transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+      onClick={handleCardClick}
+    >
       <div className="bg-card rounded-lg overflow-hidden border border-border/50 hover:border-primary/20 hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.2)] h-full flex flex-col">
         {/* Principle 3: The Image - Primary visual element */}
         <div className="relative aspect-[2/1] overflow-hidden">
@@ -34,10 +48,7 @@ export function ContentCard({ content, onBookmarkToggle }: ContentCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onBookmarkToggle();
-              }}
+              onClick={handleBookmarkClick}
               className={cn(
                 "bg-background/80 backdrop-blur hover:bg-background/90 transition-all duration-200 h-6 w-6 p-0",
                 content.bookmarked 
