@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Bot, Menu, Store } from 'lucide-react';
+import { Bot, Compass, Menu, Store } from 'lucide-react';
 
 import { NavAgents } from '@/components/sidebar/nav-agents';
 import { NavUserWithTeams } from '@/components/sidebar/nav-user-with-teams';
@@ -49,9 +49,10 @@ export function SidebarLeft({
   });
 
   const pathname = usePathname();
-  const { flags, loading: flagsLoading } = useFeatureFlags(['custom_agents', 'agent_marketplace']);
+  const { flags, loading: flagsLoading } = useFeatureFlags(['custom_agents', 'agent_marketplace', 'discover']);
   const customAgentsEnabled = flags.custom_agents;
   const marketplaceEnabled = flags.agent_marketplace;
+  const discoverEnabled = flags.discover;
 
   // Fetch user data
   useEffect(() => {
@@ -138,8 +139,20 @@ export function SidebarLeft({
         </div>
       </SidebarHeader>
       <SidebarContent className="[&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-        {!flagsLoading && (customAgentsEnabled || marketplaceEnabled) && (
+        {!flagsLoading && (customAgentsEnabled || marketplaceEnabled || discoverEnabled) && (
           <SidebarGroup>
+            {discoverEnabled && (
+              <Link href="/discover">
+                <SidebarMenuButton className={cn({
+                  'bg-primary/10 font-medium': pathname === '/discover',
+                })}>
+                  <Compass className="h-4 w-4 mr-2" />
+                  <span className="flex items-center justify-between w-full">
+                    Discover
+                  </span>
+                </SidebarMenuButton>
+              </Link>
+            )}
             {customAgentsEnabled && (
               <Link href="/agents">
                 <SidebarMenuButton className={cn({
