@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Bookmark, Clock, ExternalLink, Share2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { DiscoverHeader } from '@/components/discover';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { useArticle, useToggleBookmark, useIncrementViews } from '@/hooks/react-query/articles/use-articles';
+import { useArticle, useToggleBookmark, useAutoTrackView, useArticleMetrics } from '@/hooks/react-query/articles/use-articles';
 import type { Article } from '@/lib/supabase/articles';
 
 export default function ArticlePage() {
@@ -19,14 +19,10 @@ export default function ArticlePage() {
   // React Query hooks
   const { data: article, isLoading, error } = useArticle(articleId);
   const toggleBookmarkMutation = useToggleBookmark();
-  const incrementViewsMutation = useIncrementViews();
-
-  // Increment view count when article loads
-  useEffect(() => {
-    if (article && articleId) {
-      incrementViewsMutation.mutate(articleId);
-    }
-  }, [article, articleId]);
+  const { trackShare } = useArticleMetrics(articleId);
+  
+  // Auto-track views with scroll and read time
+  useAutoTrackView(articleId, !!article);
 
   const handleBookmarkToggle = async () => {
     if (article) {
@@ -39,6 +35,9 @@ export default function ArticlePage() {
   };
 
   const handleShare = async () => {
+    // Track share event
+    trackShare('native');
+    
     if (navigator.share) {
       try {
         await navigator.share({
@@ -202,7 +201,16 @@ export default function ArticlePage() {
 
             {/* Article content */}
             <div className="prose prose-lg dark:prose-invert max-w-none mb-12">
-              <div dangerouslySetInnerHTML={{ __html: article.content }} />
+              <div 
+                dangerouslySetInnerHTML={{ 
+                  __html: article.content
+                    .replace(/\n\n/g, '</p><p>')
+                    .replace(/\n/g, '<br>')
+                    .replace(/^/, '<p>')
+                    .replace(/$/, '</p>')
+                    .replace(/<p><\/p>/g, '')
+                }} 
+              />
             </div>
 
             {/* Tags */}
@@ -241,20 +249,33 @@ export default function ArticlePage() {
               </div>
             )}
 
-            {/* Article stats */}
-            <div className="flex items-center gap-6 p-4 bg-card rounded-lg border border-border/50">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-foreground">{article.views.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Views</p>
+            {/* Article stats - Minimal and discrete */}
+            <div className="flex items-center gap-4 text-sm text-muted-foreground border-t border-border/30 pt-4">
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span>{article.read_time}</span>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-foreground">{Math.round(article.engagement)}%</p>
-                <p className="text-sm text-muted-foreground">Engagement</p>
+              <span>•</span>
+              <div className="flex items-center gap-1">
+                <span>{(article.total_views || article.views || 0).toLocaleString()} views</span>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-foreground">{article.read_time}</p>
-                <p className="text-sm text-muted-foreground">Read Time</p>
-              </div>
+              {(article.total_shares || 0) > 0 && (
+                <>
+                  <span>•</span>
+                  <div className="flex items-center gap-1">
+                    <Share2 className="h-3 w-3" />
+                    <span>{article.total_shares}</span>
+                  </div>
+                </>
+              )}
+              {(article.engagement || 0) > 0 && (
+                <>
+                  <span>•</span>
+                  <div className="flex items-center gap-1">
+                    <span>{Math.round(article.engagement)}% engagement</span>
+                  </div>
+                </>
+              )}
             </div>
           </article>
         </div>

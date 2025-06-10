@@ -36,6 +36,43 @@ export interface ArticlesPagination {
   pageSize: number;
 }
 
+// Metrics interfaces
+export interface ArticleEvent {
+  id?: string;
+  article_id: string;
+  user_id?: string;
+  session_id?: string;
+  event_type: 'view' | 'share' | 'save' | 'comment' | 'like' | 'bookmark';
+  read_time_seconds?: number;
+  scroll_percentage?: number;
+  metadata?: any;
+  created_at?: string;
+}
+
+export interface ArticleAnalytics {
+  total_views: number;
+  unique_views: number;
+  total_shares: number;
+  total_saves: number;
+  total_comments: number;
+  avg_engagement_rate: number;
+  avg_read_time: number;
+  avg_bounce_rate: number;
+}
+
+export interface DashboardStats {
+  total_articles: number;
+  total_views: number;
+  total_engagement: number;
+  total_shares: number;
+  total_saves: number;
+  weekly_growth: {
+    views: number;
+    engagement: number;
+    articles: number;
+  };
+}
+
 interface MediaItem {
   id: string;
   type: 'image' | 'video';
@@ -109,6 +146,10 @@ export class ArticlesService {
       maxContentSizeFormatted: `${(this.MAX_CONTENT_SIZE / 1000).toFixed(0)}KB`
     };
   }
+
+  // =======================
+  // ARTICLES CRUD
+  // =======================
 
   async getArticles(
     pagination: ArticlesPagination = { page: 1, pageSize: 10 },
@@ -216,26 +257,37 @@ export class ArticlesService {
 
   async updateArticle(articleData: UpdateArticleData) {
     try {
+      const { data: user } = await this.supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
+
       const { id, ...updateData } = articleData;
 
       // Validate payload size before sending
       const validatedData = this.validatePayloadSize(updateData);
 
-      const updatePayload: ArticleUpdate = {
-        ...validatedData,
-        publish_date: validatedData.status === 'published' 
-          ? (validatedData.publish_date ? new Date(validatedData.publish_date).toISOString() : new Date().toISOString())
-          : undefined,
-      };
+      // Debug logging
+      console.log('=== UPDATE PAYLOAD DEBUG ===');
+      console.log('Content length:', validatedData.content?.length || 0);
+      console.log('Media items count:', validatedData.media_items?.length || 0);
+      console.log('Sources count:', validatedData.sources?.length || 0);
 
       const { data, error } = await this.supabase
         .from('articles')
-        .update(updatePayload)
+        .update({
+          ...validatedData,
+          publish_date: validatedData.status === 'published' 
+            ? (validatedData.publish_date ? new Date(validatedData.publish_date).toISOString() : new Date().toISOString())
+            : null,
+        })
         .eq('id', id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating article:', error);
+        throw error;
+      }
+
       return data;
     } catch (error) {
       console.error('Error updating article:', error);
@@ -258,10 +310,147 @@ export class ArticlesService {
     }
   }
 
+  // =======================
+  // METRICS & ANALYTICS
+  // =======================
+
+  // Track article events
+  async trackEvent(
+    articleId: string, 
+    eventType: 'view' | 'share' | 'save' | 'comment' | 'like' | 'bookmark',
+    options: {
+      readTimeSeconds?: number;
+      scrollPercentage?: number;
+      metadata?: any;
+    } = {}
+  ) {
+    try {
+      const { data: user } = await this.supabase.auth.getUser();
+      const sessionId = !user.user ? this.generateSessionId() : undefined;
+
+      const { data, error } = await this.supabase.rpc('track_article_event', {
+        p_article_id: articleId,
+        p_event_type: eventType,
+        p_user_id: user.user?.id || null,
+        p_session_id: sessionId,
+        p_read_time_seconds: options.readTimeSeconds || 0,
+        p_scroll_percentage: options.scrollPercentage || 0,
+        p_metadata: options.metadata || {}
+      });
+
+      if (error) {
+        console.error('Error tracking event:', error);
+        // Don't throw here to avoid breaking user experience
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error tracking event:', error);
+    }
+  }
+
+  // Get analytics summary
+  async getAnalyticsSummary(
+    articleId?: string,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<ArticleAnalytics> {
+    try {
+      const { data, error } = await this.supabase.rpc('get_article_analytics_summary', {
+        p_article_id: articleId || null,
+        p_date_from: dateFrom || null,
+        p_date_to: dateTo || null
+      });
+
+      if (error) throw error;
+
+      return data[0] || {
+        total_views: 0,
+        unique_views: 0,
+        total_shares: 0,
+        total_saves: 0,
+        total_comments: 0,
+        avg_engagement_rate: 0,
+        avg_read_time: 0,
+        avg_bounce_rate: 0
+      };
+    } catch (error) {
+      console.error('Error fetching analytics summary:', error);
+      throw error;
+    }
+  }
+
+  // Get dashboard statistics
+  async getDashboardStats(): Promise<DashboardStats> {
+    try {
+      // Get overall stats
+      const { data: articles, error: articlesError } = await this.supabase
+        .from('articles')
+        .select('total_views, engagement, total_shares, total_saves, created_at')
+        .eq('status', 'published');
+
+      if (articlesError) throw articlesError;
+
+      // Calculate current week and previous week
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      const currentWeekArticles = articles?.filter(a => 
+        new Date(a.created_at) >= oneWeekAgo
+      ) || [];
+
+      const totalViews = articles?.reduce((sum, a) => sum + (a.total_views || 0), 0) || 0;
+      const totalShares = articles?.reduce((sum, a) => sum + (a.total_shares || 0), 0) || 0;
+      const totalSaves = articles?.reduce((sum, a) => sum + (a.total_saves || 0), 0) || 0;
+      const avgEngagement = articles?.reduce((sum, a) => sum + (a.engagement || 0), 0) / (articles?.length || 1) || 0;
+
+      // Previous week stats for growth calculation
+      const twoWeeksAgo = new Date();
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+      const previousWeekArticles = articles?.filter(a => {
+        const createdAt = new Date(a.created_at);
+        return createdAt >= twoWeeksAgo && createdAt < oneWeekAgo;
+      }) || [];
+
+      const prevWeekViews = previousWeekArticles.reduce((sum, a) => sum + (a.total_views || 0), 0);
+      const prevWeekEngagement = previousWeekArticles.reduce((sum, a) => sum + (a.engagement || 0), 0) / (previousWeekArticles.length || 1);
+
+      const currentWeekViews = currentWeekArticles.reduce((sum, a) => sum + (a.total_views || 0), 0);
+      const currentWeekEngagement = currentWeekArticles.reduce((sum, a) => sum + (a.engagement || 0), 0) / (currentWeekArticles.length || 1);
+
+      return {
+        total_articles: articles?.length || 0,
+        total_views: totalViews,
+        total_engagement: avgEngagement,
+        total_shares: totalShares,
+        total_saves: totalSaves,
+        weekly_growth: {
+          views: prevWeekViews > 0 ? ((currentWeekViews - prevWeekViews) / prevWeekViews) * 100 : 0,
+          engagement: prevWeekEngagement > 0 ? ((currentWeekEngagement - prevWeekEngagement) / prevWeekEngagement) * 100 : 0,
+          articles: currentWeekArticles.length
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      throw error;
+    }
+  }
+
+  // Increment views (wrapper for trackEvent)
+  async incrementViews(id: string, readTime?: number, scrollPercentage?: number) {
+    return this.trackEvent(id, 'view', {
+      readTimeSeconds: readTime,
+      scrollPercentage: scrollPercentage
+    });
+  }
+
+  // Toggle bookmark
   async toggleBookmark(id: string) {
     try {
-      const { data, error } = await this.supabase
-        .rpc('toggle_article_bookmark', { article_id: id });
+      const { data, error } = await this.supabase.rpc('toggle_article_bookmark', {
+        article_id: id
+      });
 
       if (error) throw error;
       return data;
@@ -271,55 +460,26 @@ export class ArticlesService {
     }
   }
 
-  async incrementViews(id: string) {
-    try {
-      const { error } = await this.supabase
-        .rpc('increment_article_views', { article_id: id });
-
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Error incrementing views:', error);
-      throw error;
-    }
+  // Share article
+  async shareArticle(id: string, platform?: string) {
+    return this.trackEvent(id, 'share', {
+      metadata: { platform }
+    });
   }
 
+  // Save article
+  async saveArticle(id: string) {
+    return this.trackEvent(id, 'save');
+  }
+
+  // Get article stats (legacy compatibility)
   async getArticleStats() {
-    try {
-      const { data, error } = await this.supabase
-        .from('articles')
-        .select('status, views, engagement');
-
-      if (error) throw error;
-
-      const stats = {
-        totalArticles: data.length,
-        publishedArticles: data.filter(a => a.status === 'published').length,
-        draftArticles: data.filter(a => a.status === 'draft').length,
-        totalViews: data.reduce((sum, a) => sum + (a.views || 0), 0),
-        averageReadTime: '4.2 min', // This could be calculated from articles
-        engagement: data.length > 0 
-          ? data.reduce((sum, a) => sum + (a.engagement || 0), 0) / data.length 
-          : 0,
-      };
-
-      return stats;
-    } catch (error) {
-      console.error('Error fetching article stats:', error);
-      throw error;
-    }
+    return this.getDashboardStats();
   }
 
-  // Real-time subscription for articles changes
-  subscribeToArticleChanges(callback: (payload: any) => void) {
-    return this.supabase
-      .channel('articles_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'articles' }, 
-        callback
-      )
-      .subscribe();
-  }
+  // =======================
+  // FILE STORAGE
+  // =======================
 
   // Add file upload method
   async uploadFile(file: File): Promise<string> {
@@ -378,6 +538,24 @@ export class ArticlesService {
       console.error('Error deleting file:', error);
       // Don't throw here to avoid breaking article deletion
     }
+  }
+
+  // =======================
+  // REAL-TIME & UTILITIES
+  // =======================
+
+  subscribeToArticleChanges(callback: (payload: any) => void) {
+    return this.supabase
+      .channel('article_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'articles' }, 
+        callback
+      )
+      .subscribe();
+  }
+
+  private generateSessionId(): string {
+    return `session_${Date.now()}_${Math.random().toString(36).substring(2)}`;
   }
 }
 

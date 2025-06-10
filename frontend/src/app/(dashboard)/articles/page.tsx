@@ -17,7 +17,9 @@ import {
   Calendar,
   Users,
   BarChart3,
-  Loader2
+  Loader2,
+  Share2,
+  Bookmark
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +38,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import Link from 'next/link';
-import { useArticles, useArticleStats, useDeleteArticle, useToggleBookmark } from '@/hooks/react-query/articles/use-articles';
+import { useArticles, useDashboardStats, useDeleteArticle, useToggleBookmark } from '@/hooks/react-query/articles/use-articles';
 import { useRouter } from 'next/navigation';
 import type { Article } from '@/lib/supabase/articles';
 
@@ -47,7 +49,7 @@ export default function ArticlesDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // React Query hooks
-  const { data: stats, isLoading: statsLoading } = useArticleStats();
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { 
     data: articlesData, 
     isLoading: articlesLoading,
@@ -154,7 +156,7 @@ export default function ArticlesDashboard() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalArticles || 0}</div>
+              <div className="text-2xl font-bold">{stats?.total_articles || 0}</div>
               <p className="text-xs text-muted-foreground">
                 +12% from last month
               </p>
@@ -167,48 +169,9 @@ export default function ArticlesDashboard() {
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.publishedArticles || 0}</div>
+              <div className="text-2xl font-bold">{formatViews(stats?.total_views || 0)}</div>
               <p className="text-xs text-muted-foreground">
-                {stats?.totalArticles ? Math.round((stats.publishedArticles / stats.totalArticles) * 100) : 0}% of total articles
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Drafts</CardTitle>
-              <Edit className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.draftArticles || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                +3 this week
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Views</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatViews(stats?.totalViews || 0)}</div>
-              <p className="text-xs text-muted-foreground">
-                +8.2% from last week
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Read Time</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.averageReadTime || '0 min'}</div>
-              <p className="text-xs text-muted-foreground">
-                Optimal range
+                {stats?.weekly_growth?.views ? `${stats.weekly_growth.views > 0 ? '+' : ''}${stats.weekly_growth.views.toFixed(1)}%` : '+0%'} from last week
               </p>
             </CardContent>
           </Card>
@@ -219,9 +182,48 @@ export default function ArticlesDashboard() {
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.engagement?.toFixed(1) || 0}%</div>
+              <div className="text-2xl font-bold">{stats?.total_engagement?.toFixed(1) || 0}%</div>
               <p className="text-xs text-muted-foreground">
-                +2.1% this month
+                {stats?.weekly_growth?.engagement ? `${stats.weekly_growth.engagement > 0 ? '+' : ''}${stats.weekly_growth.engagement.toFixed(1)}%` : '+0%'} this month
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Shares</CardTitle>
+              <Share2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.total_shares || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                Across all articles
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Saves</CardTitle>
+              <Bookmark className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.total_saves || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                Articles saved by users
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">New Articles</CardTitle>
+              <Plus className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.weekly_growth?.articles || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                This week
               </p>
             </CardContent>
           </Card>
