@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, useCallback, forwardRef, useImperativeHandle, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -79,7 +79,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
     
     // Update the value
     if (editorRef.current) {
-      const newContent = editorRef.current.innerText;
+      const newContent = editorRef.current.innerHTML;
       onChange(newContent);
     }
   }, [onChange]);
@@ -108,14 +108,14 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
     }
     
     if (editorRef.current) {
-      const newContent = editorRef.current.innerText;
+      const newContent = editorRef.current.innerHTML;
       onChange(newContent);
     }
   }, [onChange]);
 
   const handleInput = useCallback(() => {
     if (editorRef.current) {
-      const newContent = editorRef.current.innerText;
+      const newContent = editorRef.current.innerHTML;
       onChange(newContent);
     }
   }, [onChange]);
@@ -147,28 +147,46 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
       }
     }
 
-    // Handle special formatting
+    // Handle Enter key properly
     if (e.key === 'Enter') {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
         const currentLine = range.startContainer.textContent || '';
         
-        // Auto-continue lists
+        // Auto-continue lists only when we're actually in a list
         if (currentLine.trim().startsWith('- ') || currentLine.trim().startsWith('* ')) {
           e.preventDefault();
-          insertAtCursor('\n- ');
+          document.execCommand('insertHTML', false, '<br>- ');
         } else if (/^\d+\.\s/.test(currentLine.trim())) {
           e.preventDefault();
           const match = currentLine.match(/^(\d+)\.\s/);
           if (match) {
             const nextNum = parseInt(match[1]) + 1;
-            insertAtCursor(`\n${nextNum}. `);
+            document.execCommand('insertHTML', false, `<br>${nextNum}. `);
           }
+        } else {
+          // For normal text, use insertHTML to create proper line break
+          e.preventDefault();
+          document.execCommand('insertHTML', false, '<br><br>');
         }
+        
+        // Update content after manual insertion
+        setTimeout(() => {
+          if (editorRef.current) {
+            onChange(editorRef.current.innerHTML);
+          }
+        }, 0);
       }
     }
-  }, [insertAtCursor, insertFormatting, formatText]);
+  }, [insertAtCursor, insertFormatting, formatText, onChange]);
+
+  // Initialize content when value changes
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== value) {
+      editorRef.current.innerHTML = value || `<p class="text-muted-foreground">${placeholder}</p>`;
+    }
+  }, [value, placeholder]);
 
   const toolbarButtons = [
     {
@@ -292,8 +310,11 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
           "[&_blockquote]:border-l-4 [&_blockquote]:border-primary/20 [&_blockquote]:pl-4 [&_blockquote]:italic",
           "[&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_code]:text-sm",
         )}
-        style={{ minHeight }}
-        dangerouslySetInnerHTML={{ __html: value || `<p class="text-muted-foreground">${placeholder}</p>` }}
+        style={{ 
+          minHeight,
+          direction: 'ltr',
+          textAlign: 'left'
+        }}
       />
 
       {/* Show toolbar toggle when hidden */}
@@ -313,7 +334,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
       {/* Status bar */}
       <div className="border-t bg-muted/30 px-4 py-2 text-xs text-muted-foreground flex justify-between">
         <span>Use Markdown formatting or toolbar buttons</span>
-        <span>{value.length} characters</span>
+        <span>{editorRef.current?.innerText?.length || 0} characters</span>
       </div>
     </div>
   );

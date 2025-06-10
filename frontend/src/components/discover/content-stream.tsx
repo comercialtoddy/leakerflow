@@ -1,3 +1,4 @@
+import React from 'react';
 import { ContentCard } from './content-card';
 import { ContentItem } from '@/types/discover';
 
@@ -6,7 +7,7 @@ interface ContentStreamProps {
   onBookmarkToggle: (id: string) => void;
 }
 
-export function ContentStream({ content, onBookmarkToggle }: ContentStreamProps) {
+export const ContentStream = React.memo(function ContentStream({ content, onBookmarkToggle }: ContentStreamProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
       {content.map((item) => (
@@ -18,4 +19,4 @@ export function ContentStream({ content, onBookmarkToggle }: ContentStreamProps)
       ))}
     </div>
   );
-} 
+}); 

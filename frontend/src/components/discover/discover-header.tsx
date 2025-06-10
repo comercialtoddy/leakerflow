@@ -43,10 +43,12 @@ const drawerVariants = {
 
 // Navigation links específicos para Discovery
 const DISCOVER_NAV_LINKS = [
-  { id: 1, name: 'Featured', href: '#featured' },
-  { id: 2, name: 'Trending', href: '#trending' },
-  { id: 3, name: 'AI & Automation', href: '#ai-automation' },
-  { id: 4, name: 'Productivity', href: '#productivity' },
+  { id: 1, name: 'For You', href: '#for-you' },
+  { id: 2, name: 'Trends', href: '#trends' },
+  { id: 3, name: 'Official', href: '#official' },
+  { id: 4, name: 'Rumor', href: '#rumor' },
+  { id: 5, name: 'Theories', href: '#theories' },
+  { id: 6, name: 'Community', href: '#community' },
 ];
 
 export function DiscoverHeader() {

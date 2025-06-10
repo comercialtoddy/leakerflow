@@ -4,8 +4,6 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useArticle, useCreateArticle, useUpdateArticle } from '@/hooks/react-query/articles/use-articles';
-import { categoriesService } from '@/lib/supabase/categories';
-import type { Category } from '@/lib/supabase/categories';
 import { RichTextEditor, RichTextEditorRef } from '@/components/ui/rich-text-editor';
 import { toast } from 'sonner';
 import { 
@@ -26,9 +24,7 @@ import {
   User,
   Clock,
   Bookmark,
-  Loader2,
-  FolderPlus,
-  Trash2
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,6 +63,16 @@ interface Source {
   description?: string;
 }
 
+// Predefined categories that match the Discover navbar
+const PREDEFINED_CATEGORIES = [
+  { value: 'for-you', label: 'For You' },
+  { value: 'trends', label: 'Trends' },
+  { value: 'official', label: 'Official' },
+  { value: 'rumor', label: 'Rumor' },
+  { value: 'theories', label: 'Theories' },
+  { value: 'community', label: 'Community' },
+];
+
 export default function ArticleEditor() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -88,11 +94,6 @@ export default function ArticleEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
   const [newSource, setNewSource] = useState({ title: '', url: '', description: '' });
-  
-  // Categories state
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [showCategoryManager, setShowCategoryManager] = useState(false);
-  const [newCategory, setNewCategory] = useState({ name: '', icon: '📝', color: '#6366f1' });
 
   // React Query hooks
   const { data: existingArticle, isLoading: loadingArticle } = useArticle(articleId);
@@ -100,20 +101,6 @@ export default function ArticleEditor() {
   const updateArticleMutation = useUpdateArticle();
 
   const isEditing = !!articleId;
-
-  // Load categories on mount
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const categoriesList = await categoriesService.getCategories();
-        setCategories(categoriesList);
-      } catch (error) {
-        console.error('Error loading categories:', error);
-        toast.error('Failed to load categories');
-      }
-    };
-    loadCategories();
-  }, []);
 
   // Load existing article data when editing
   useEffect(() => {
@@ -145,7 +132,7 @@ export default function ArticleEditor() {
 
     for (const file of Array.from(files)) {
       try {
-        // Check file size (15MB limit)
+          // Check file size (15MB limit)
         const maxSize = 15 * 1024 * 1024; // 15MB
         if (file.size > maxSize) {
           toast.error(`File "${file.name}" exceeds 15MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
@@ -206,40 +193,6 @@ export default function ArticleEditor() {
     setMediaItems(prev => prev.filter(item => item.id !== itemId));
   }, []);
 
-  // Category management functions
-  const createCategory = useCallback(async () => {
-    if (!newCategory.name.trim()) {
-      toast.error('Category name is required');
-      return;
-    }
-
-    try {
-      const category = await categoriesService.createCategory({
-        name: newCategory.name.trim(),
-        icon: newCategory.icon,
-        color: newCategory.color,
-      });
-      
-      setCategories(prev => [...prev, category]);
-      setNewCategory({ name: '', icon: '📝', color: '#6366f1' });
-      toast.success('Category created successfully!');
-    } catch (error) {
-      console.error('Error creating category:', error);
-      toast.error('Failed to create category');
-    }
-  }, [newCategory]);
-
-  const deleteCategory = useCallback(async (categoryId: string) => {
-    try {
-      await categoriesService.deleteCategory(categoryId);
-      setCategories(prev => prev.filter(cat => cat.id !== categoryId));
-      toast.success('Category deleted successfully!');
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      toast.error('Failed to delete category');
-    }
-  }, []);
-
   const insertMediaIntoEditor = useCallback((url: string, type: 'image' | 'video') => {
     if (richTextEditorRef.current) {
       richTextEditorRef.current.insertMedia(url, type);
@@ -247,9 +200,10 @@ export default function ArticleEditor() {
   }, []);
 
   const estimateReadTime = useCallback((text: string) => {
-    const wordsPerMinute = 200;
-    const words = text.trim().split(/\s+/).length;
-    const minutes = Math.ceil(words / wordsPerMinute);
+    // Calculate read time based on characters (approximately 1000 characters per minute)
+    const charactersPerMinute = 1000;
+    const characters = text.trim().length;
+    const minutes = Math.ceil(characters / charactersPerMinute);
     return `${minutes} min read`;
   }, []);
 
@@ -417,16 +371,16 @@ export default function ArticleEditor() {
                   <Label htmlFor="content">Content</Label>
                   
                   {/* Content size warning */}
-                  {content.length > 180000 && (
+                  {content.length > 90000 && (
                     <div className={`p-3 rounded-lg text-sm ${
-                      content.length > 200000 
+                      content.length > 100000 
                         ? 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800' 
                         : 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
                     }`}>
-                      {content.length > 200000 ? (
-                        <>⚠️ Content exceeds 200K character limit and will be truncated when saved. Consider breaking this into multiple articles.</>
+                      {content.length > 100000 ? (
+                        <>⚠️ Content exceeds 100K character limit and will be truncated when saved. Consider breaking this into multiple articles.</>
                       ) : (
-                        <>⚠️ Content is approaching the 200K character limit ({((content.length / 200000) * 100).toFixed(1)}% used).</>
+                        <>⚠️ Content is approaching the 100K character limit ({((content.length / 100000) * 100).toFixed(1)}% used).</>
                       )}
                     </div>
                   )}
@@ -439,11 +393,8 @@ export default function ArticleEditor() {
                     minHeight="500px"
                   />
                   
-                  <div className="flex justify-between items-center text-xs text-muted-foreground">
-                    <span>Estimated read time: {estimateReadTime(content)}</span>
-                    <span className={content.length > 180000 ? 'text-amber-600' : content.length > 200000 ? 'text-red-600' : ''}>
-                       {content.length.toLocaleString()} / 200,000 characters
-                     </span>
+                  <div className={`text-xs text-muted-foreground ${content.length > 90000 ? 'text-amber-600' : content.length > 100000 ? 'text-red-600' : ''}`}>
+                    Estimated read time: {estimateReadTime(content)}
                   </div>
                 </div>
               </CardContent>
@@ -629,101 +580,21 @@ export default function ArticleEditor() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="category">Category</Label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowCategoryManager(!showCategoryManager)}
-                      className="h-6 text-xs"
-                    >
-                      <FolderPlus className="h-3 w-3 mr-1" />
-                      Manage
-                    </Button>
-                  </div>
-                  
+                  <Label htmlFor="category">Category</Label>
                   <Select value={category} onValueChange={setCategory}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.slug}>
+                      {PREDEFINED_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
                           <div className="flex items-center gap-2">
-                            <span>{cat.icon}</span>
-                            <span>{cat.name}</span>
+                            <span>{cat.label}</span>
                           </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-
-                  {/* Category Manager */}
-                  {showCategoryManager && (
-                    <div className="p-4 border rounded-lg bg-muted/50 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium">Category Management</h4>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowCategoryManager(false)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      
-                      {/* Create new category */}
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-3 gap-2">
-                          <Input
-                            placeholder="Category name"
-                            value={newCategory.name}
-                            onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
-                          />
-                          <Input
-                            placeholder="Icon (emoji)"
-                            value={newCategory.icon}
-                            onChange={(e) => setNewCategory(prev => ({ ...prev, icon: e.target.value }))}
-                            maxLength={2}
-                          />
-                          <Input
-                            type="color"
-                            value={newCategory.color}
-                            onChange={(e) => setNewCategory(prev => ({ ...prev, color: e.target.value }))}
-                          />
-                        </div>
-                        <Button onClick={createCategory} size="sm" className="w-full">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create Category
-                        </Button>
-                      </div>
-
-                      {/* Existing categories */}
-                      {categories.length > 0 && (
-                        <div className="space-y-2">
-                          <h5 className="text-sm font-medium">Existing Categories</h5>
-                          <div className="space-y-1 max-h-32 overflow-y-auto">
-                            {categories.map((cat) => (
-                              <div key={cat.id} className="flex items-center justify-between p-2 bg-background rounded border">
-                                <div className="flex items-center gap-2">
-                                  <span>{cat.icon}</span>
-                                  <span className="text-sm">{cat.name}</span>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => deleteCategory(cat.id)}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-2">

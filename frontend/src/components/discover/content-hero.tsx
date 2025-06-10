@@ -1,3 +1,4 @@
+import React from 'react';
 import { Bookmark, Clock, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +12,7 @@ interface ContentHeroProps {
   onBookmarkToggle: () => void;
 }
 
-export function ContentHero({ content, onBookmarkToggle }: ContentHeroProps) {
+export const ContentHero = React.memo(function ContentHero({ content, onBookmarkToggle }: ContentHeroProps) {
   const router = useRouter();
   const timeAgo = formatDistanceToNow(new Date(content.publishedAt), { addSuffix: true });
 
@@ -41,6 +42,7 @@ export function ContentHero({ content, onBookmarkToggle }: ContentHeroProps) {
             src={content.imageUrl}
             alt={content.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
           />
           {/* Category badge overlay */}
           <div className="absolute top-2 left-2">
@@ -112,4 +114,4 @@ export function ContentHero({ content, onBookmarkToggle }: ContentHeroProps) {
       </div>
     </article>
   );
-} 
+}); 

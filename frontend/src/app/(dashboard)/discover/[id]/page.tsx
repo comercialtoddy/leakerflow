@@ -162,9 +162,9 @@ export default function ArticlePage() {
                     size="sm"
                     onClick={() => window.open(article.source_url, '_blank')}
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View Source
-                  </Button>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Source
+                </Button>
                 )}
               </div>
 
@@ -190,13 +190,13 @@ export default function ArticlePage() {
 
             {/* Hero image */}
             {article.image_url && (
-              <div className="mb-8">
-                <img 
+            <div className="mb-8">
+              <img 
                   src={article.image_url} 
-                  alt={article.title}
-                  className="w-full h-64 md:h-96 object-cover rounded-xl"
-                />
-              </div>
+                alt={article.title}
+                className="w-full h-64 md:h-96 object-cover rounded-xl"
+              />
+            </div>
             )}
 
             {/* Article content */}
@@ -215,16 +215,16 @@ export default function ArticlePage() {
 
             {/* Tags */}
             {article.tags.length > 0 && (
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-foreground mb-3">Tags</h3>
-                <div className="flex flex-wrap gap-2">
-                  {article.tags.map((tag) => (
-                    <Badge key={tag} variant="outline">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-foreground mb-3">Tags</h3>
+              <div className="flex flex-wrap gap-2">
+                {article.tags.map((tag) => (
+                  <Badge key={tag} variant="outline">
+                    {tag}
+                  </Badge>
+                ))}
               </div>
+            </div>
             )}
 
             {/* Sources */}
@@ -273,7 +273,7 @@ export default function ArticlePage() {
                   <span>•</span>
                   <div className="flex items-center gap-1">
                     <span>{Math.round(article.engagement)}% engagement</span>
-                  </div>
+              </div>
                 </>
               )}
             </div>

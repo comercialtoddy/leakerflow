@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   ContentHero, 
   ContentStream, 
@@ -9,22 +9,20 @@ import {
 import type { ContentItem } from '@/types/discover';
 import { useArticles, useToggleBookmark, useIncrementViews } from '@/hooks/react-query/articles/use-articles';
 
-// Convert Supabase article to ContentItem format
-const convertArticleToContentItem = (article: any): ContentItem => {
-  return {
-    id: article.id,
-    title: article.title,
-    subtitle: article.subtitle,
-    imageUrl: article.image_url || '/api/placeholder/400/250',
-    source: article.author,
-    category: article.category,
-    readTime: article.read_time,
-    publishedAt: article.publish_date || article.created_at,
-    bookmarked: article.bookmarked,
-  };
-};
+// Convert Supabase article to ContentItem format (memoized)
+const convertArticleToContentItem = (article: any): ContentItem => ({
+  id: article.id,
+  title: article.title,
+  subtitle: article.subtitle,
+  imageUrl: article.image_url || '/api/placeholder/400/250',
+  source: article.author,
+  category: article.category,
+  readTime: article.read_time,
+  publishedAt: article.publish_date || article.created_at,
+  bookmarked: article.bookmarked,
+});
 
-// Chunking utility to group content into hero + stream items
+// Optimized chunking utility with memoization
 const chunkContent = (content: ContentItem[]) => {
   return content.reduce<ContentItem[][]>((resultArray, item, index) => {
     const chunkIndex = Math.floor(index / 4);
@@ -37,9 +35,15 @@ const chunkContent = (content: ContentItem[]) => {
 };
 
 export default function DiscoverPage() {
-  const [allShownArticles, setAllShownArticles] = useState<ContentItem[]>([]);
-  const [currentCycle, setCurrentCycle] = useState(0);
+  // Consolidated state for better performance
+  const [displayState, setDisplayState] = useState({
+    shownArticles: [] as ContentItem[],
+    currentCycle: 0,
+    isLoadingMore: false
+  });
+  
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   // Fetch published articles from Supabase
   const { 
@@ -53,106 +57,150 @@ export default function DiscoverPage() {
   const toggleBookmarkMutation = useToggleBookmark();
   const incrementViewsMutation = useIncrementViews();
 
-  // Flatten all articles from all pages
-  const allArticles = articlesData?.pages.flatMap(page => (page as any)?.articles || []) || [];
-  
-  // Convert to ContentItem format
-  const convertedArticles = allArticles.map(convertArticleToContentItem);
+  // Memoized article conversion and flattening
+  const convertedArticles = useMemo(() => {
+    const allArticles = articlesData?.pages.flatMap(page => (page as any)?.articles || []) || [];
+    return allArticles.map(convertArticleToContentItem);
+  }, [articlesData]);
 
+  // Optimized bookmark handler with optimistic updates
   const handleBookmarkToggle = useCallback(async (contentId: string) => {
-    try {
-      await toggleBookmarkMutation.mutateAsync(contentId);
-      
-      // Update local state optimistically
-      setAllShownArticles(prev => 
-      prev.map(item => 
+    // Immediate optimistic update
+    setDisplayState(prev => ({
+      ...prev,
+      shownArticles: prev.shownArticles.map(item => 
         item.id === contentId 
           ? { ...item, bookmarked: !item.bookmarked }
           : item
       )
-    );
+    }));
+
+    try {
+      await toggleBookmarkMutation.mutateAsync(contentId);
     } catch (error) {
+      // Revert on error
+      setDisplayState(prev => ({
+        ...prev,
+        shownArticles: prev.shownArticles.map(item => 
+          item.id === contentId 
+            ? { ...item, bookmarked: !item.bookmarked }
+            : item
+        )
+      }));
       console.error('Failed to toggle bookmark:', error);
     }
   }, [toggleBookmarkMutation]);
 
   const handleContentClick = useCallback(async (content: ContentItem) => {
     try {
-      await incrementViewsMutation.mutateAsync(content.id);
+      await incrementViewsMutation.mutateAsync({ id: content.id });
     } catch (error) {
       console.error('Failed to increment views:', error);
     }
   }, [incrementViewsMutation]);
 
+  // Optimized load more function with debouncing
   const loadMoreContent = useCallback(async () => {
-    if (isLoading || isFetchingNextPage) return;
+    if (displayState.isLoadingMore || isLoading || isFetchingNextPage) return;
 
-    // If we have more pages to fetch, fetch them
-    if (hasNextPage) {
-      await fetchNextPage();
-      return;
-    }
+    setDisplayState(prev => ({ ...prev, isLoadingMore: true }));
 
-    // If no more pages and we have articles, restart the cycle
-    if (convertedArticles.length > 0) {
-      const articlesToAdd = convertedArticles.slice(0, 4); // Add 4 articles per cycle
-      
-      if (articlesToAdd.length > 0) {
-        setAllShownArticles(prev => [...prev, ...articlesToAdd]);
-        setCurrentCycle(prev => prev + 1);
-      }
-    }
-  }, [isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, convertedArticles]);
-
-  // Initial load and infinite scroll setup
-  useEffect(() => {
-    if (convertedArticles.length > 0 && allShownArticles.length === 0) {
-      // Initial load - add first batch of articles
-      const initialArticles = convertedArticles.slice(0, 4);
-      setAllShownArticles(initialArticles);
-    }
-  }, [convertedArticles, allShownArticles.length]);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting) {
-          loadMoreContent();
+    try {
+      // If we have more pages to fetch, fetch them
+      if (hasNextPage) {
+        await fetchNextPage();
+      } else if (convertedArticles.length > 0) {
+        // Restart cycle with batch loading
+        const articlesToAdd = convertedArticles.slice(0, 4);
+        if (articlesToAdd.length > 0) {
+          setDisplayState(prev => ({
+            shownArticles: [...prev.shownArticles, ...articlesToAdd],
+            currentCycle: prev.currentCycle + 1,
+            isLoadingMore: false
+          }));
+          return;
         }
-      },
-      { threshold: 1.0 }
-    );
-
-    const currentSentinel = sentinelRef.current;
-    if (currentSentinel) {
-      observer.observe(currentSentinel);
+      }
+    } finally {
+      setDisplayState(prev => ({ ...prev, isLoadingMore: false }));
     }
+  }, [displayState.isLoadingMore, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, convertedArticles]);
 
-    return () => {
-      if (currentSentinel) {
-        observer.unobserve(currentSentinel);
+  // Optimized intersection observer setup
+  useEffect(() => {
+    const createObserver = () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && !displayState.isLoadingMore) {
+            loadMoreContent();
+          }
+        },
+        { 
+          threshold: 0.1,
+          rootMargin: '100px' // Start loading before user reaches the end
+        }
+      );
+
+      if (sentinelRef.current) {
+        observerRef.current.observe(sentinelRef.current);
       }
     };
-  }, [loadMoreContent]);
 
-  // Update shown articles when new data arrives
+    createObserver();
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [loadMoreContent, displayState.isLoadingMore]);
+
+  // Optimized initial load and data updates
   useEffect(() => {
     if (convertedArticles.length > 0) {
-      const currentlyShown = allShownArticles.length;
-      const cycleSize = 4;
-      const totalCycles = Math.floor(currentlyShown / cycleSize);
-      
-      // If we have new articles and are not in the middle of adding them
-      if (convertedArticles.length > totalCycles * cycleSize) {
-        const newArticles = convertedArticles.slice(currentlyShown, currentlyShown + cycleSize);
-        if (newArticles.length > 0) {
-          setAllShownArticles(prev => [...prev, ...newArticles]);
+      setDisplayState(prev => {
+        // Initial load
+        if (prev.shownArticles.length === 0) {
+          return {
+            ...prev,
+            shownArticles: convertedArticles.slice(0, 4)
+          };
         }
-      }
-    }
-  }, [convertedArticles, allShownArticles.length]);
 
-  const chunked = chunkContent(allShownArticles);
+        // Add new articles when they arrive
+        const currentlyShown = prev.shownArticles.length;
+        const cycleSize = 4;
+        const expectedArticles = Math.ceil(currentlyShown / cycleSize) * cycleSize;
+        
+        if (convertedArticles.length > expectedArticles) {
+          const newArticles = convertedArticles.slice(currentlyShown, currentlyShown + cycleSize);
+          if (newArticles.length > 0) {
+            return {
+              ...prev,
+              shownArticles: [...prev.shownArticles, ...newArticles]
+            };
+          }
+        }
+
+        return prev;
+      });
+    }
+  }, [convertedArticles]);
+
+  // Memoized chunked content
+  const chunkedContent = useMemo(() => 
+    chunkContent(displayState.shownArticles), 
+    [displayState.shownArticles]
+  );
+
+  // Memoized loading states
+  const isInitialLoading = isLoading && displayState.shownArticles.length === 0;
+  const isLoadingMoreContent = (isFetchingNextPage || displayState.isLoadingMore) && displayState.shownArticles.length > 0;
+  const showCycleIndicator = !hasNextPage && convertedArticles.length > 0 && displayState.currentCycle > 0;
 
   return (
     <>
@@ -160,11 +208,11 @@ export default function DiscoverPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <main className="pb-16 pt-12 transform scale-75 origin-top">
-            {allShownArticles.length === 0 && isLoading ? (
+            {isInitialLoading ? (
               <div className="flex justify-center items-center py-12">
                 <div className="w-8 h-8 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
               </div>
-            ) : allShownArticles.length === 0 ? (
+            ) : displayState.shownArticles.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <h2 className="text-2xl font-bold mb-4">No Articles Available</h2>
                 <p className="text-muted-foreground mb-6">
@@ -178,39 +226,38 @@ export default function DiscoverPage() {
                 </a>
               </div>
             ) : (
-            <div className="space-y-6">
-              {chunked.map((chunk, index) => (
-                <section key={`chunk-${index}`} className="space-y-6">
-                  {chunk[0] && (
-                     <ContentHero
-                      content={chunk[0]}
-                      onBookmarkToggle={() => handleBookmarkToggle(chunk[0].id)}
-                    />
-                  )}
-                  {chunk.length > 1 && (
-                    <ContentStream
-                      content={chunk.slice(1)}
-                      onBookmarkToggle={handleBookmarkToggle}
-                    />
-                  )}
-                </section>
-              ))}
-            </div>
+              <div className="space-y-6">
+                {chunkedContent.map((chunk, index) => (
+                  <section key={`chunk-${index}`} className="space-y-6">
+                    {chunk[0] && (
+                      <ContentHero
+                        content={chunk[0]}
+                        onBookmarkToggle={() => handleBookmarkToggle(chunk[0].id)}
+                      />
+                    )}
+                    {chunk.length > 1 && (
+                      <ContentStream
+                        content={chunk.slice(1)}
+                        onBookmarkToggle={handleBookmarkToggle}
+                      />
+                    )}
+                  </section>
+                ))}
+              </div>
             )}
             
             <div ref={sentinelRef} className="h-10" />
 
-            {(isLoading || isFetchingNextPage) && allShownArticles.length > 0 && (
+            {isLoadingMoreContent && (
               <div className="flex justify-center items-center py-6">
                 <div className="w-8 h-8 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
               </div>
             )}
 
-            {/* Show cycle indicator when restarting articles */}
-            {!hasNextPage && convertedArticles.length > 0 && currentCycle > 0 && (
+            {showCycleIndicator && process.env.NODE_ENV === 'development' && (
               <div className="flex justify-center items-center py-6">
                 <div className="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                  Showing articles again • Cycle {currentCycle + 1}
+                  Showing articles again • Cycle {displayState.currentCycle + 1}
                 </div>
               </div>
             )}

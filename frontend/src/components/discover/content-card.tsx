@@ -1,3 +1,4 @@
+import React from 'react';
 import { Bookmark, Clock, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +12,7 @@ interface ContentCardProps {
   onBookmarkToggle: () => void;
 }
 
-export function ContentCard({ content, onBookmarkToggle }: ContentCardProps) {
+export const ContentCard = React.memo(function ContentCard({ content, onBookmarkToggle }: ContentCardProps) {
   const router = useRouter();
   const timeAgo = formatDistanceToNow(new Date(content.publishedAt), { addSuffix: true });
 
@@ -36,6 +37,7 @@ export function ContentCard({ content, onBookmarkToggle }: ContentCardProps) {
             src={content.imageUrl}
             alt={content.title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
           />
           {/* Category badge - smaller than hero version */}
           <div className="absolute top-2 left-2">
@@ -101,4 +103,4 @@ export function ContentCard({ content, onBookmarkToggle }: ContentCardProps) {
       </div>
     </article>
   );
-} 
+}); 

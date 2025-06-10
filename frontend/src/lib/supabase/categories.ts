@@ -1,5 +1,7 @@
-import { supabase } from './client';
+import { createClient } from './client';
 import type { Database } from '@/types/supabase';
+
+const supabase = createClient();
 
 export type Category = Database['public']['Tables']['categories']['Row'];
 export type CategoryInsert = Database['public']['Tables']['categories']['Insert'];
@@ -197,7 +199,7 @@ export class CategoriesService {
 
     return Object.entries(stats).map(([category, count]) => ({
       category,
-      count,
+      count: count as number,
     }));
   }
 }
