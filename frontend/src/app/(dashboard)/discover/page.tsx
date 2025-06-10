@@ -7,68 +7,20 @@ import {
   DiscoverHeader 
 } from '@/components/discover';
 import type { ContentItem } from '@/types/discover';
+import { useArticles, useToggleBookmark, useIncrementViews } from '@/hooks/react-query/articles/use-articles';
 
-// Mock data structure - in real app this would come from your API
-const INITIAL_HERO_CONTENT: ContentItem = {
-  id: 'hero-1',
-  title: 'Revolutionary AI Project Management is Transforming How Teams Work',
-  subtitle: 'Discover how cutting-edge artificial intelligence is reshaping project workflows, automating routine tasks, and enabling teams to focus on strategic innovation in 2024.',
-  imageUrl: '/api/placeholder/800/400',
-  source: 'Project X Research',
-  category: 'AI & Automation',
-  readTime: '5 min read',
-  publishedAt: '2024-01-15T10:30:00Z',
-  bookmarked: false,
-};
-
-const INITIAL_STREAM_CONTENT: ContentItem[] = [
-  {
-    id: 'stream-1',
-    title: 'The Future of Collaborative Workspaces in Remote Teams',
-    subtitle: 'New research reveals how hybrid teams are leveraging digital tools to maintain productivity and connection across distributed workforces.',
-    imageUrl: '/api/placeholder/400/250',
-    source: 'Workplace Evolution',
-    category: 'Productivity',
-    readTime: '3 min read',
-    publishedAt: '2024-01-14T14:20:00Z',
-    bookmarked: true,
-  },
-  {
-    id: 'stream-2',
-    title: 'Breaking: Major Security Update for Cloud Infrastructure',
-    subtitle: 'Industry leaders announce new protocols that could affect how businesses manage their cloud-based operations and data security.',
-    imageUrl: '/api/placeholder/400/250',
-    source: 'Tech Security Weekly',
-    category: 'Development',
-    readTime: '4 min read',
-    publishedAt: '2024-01-14T09:15:00Z',
-    bookmarked: false,
-  },
-  {
-    id: 'stream-3',
-    title: 'Sustainable Business Practices Show Record Growth',
-    subtitle: 'Companies implementing green technologies and sustainable workflows report significant improvements in both efficiency and market position.',
-    imageUrl: '/api/placeholder/400/250',
-    source: 'Business Innovation',
-    category: 'Business',
-    readTime: '6 min read',
-    publishedAt: '2024-01-13T16:45:00Z',
-    bookmarked: false,
-  },
-];
-
-const generateMockItem = (index: number): ContentItem => {
-  const isHero = index % 4 === 0;
+// Convert Supabase article to ContentItem format
+const convertArticleToContentItem = (article: any): ContentItem => {
   return {
-    id: `item-${Date.now()}-${index}`,
-    title: `Dynamically Loaded Content Title ${index}`,
-    subtitle: `This is a subtitle for the dynamically loaded content item #${index}. It's fresh off the press.`,
-    imageUrl: `/api/placeholder/${isHero ? '800/400' : '400/250'}?seed=${index}`,
-    source: 'Infinite Scroll News',
-    category: 'Dynamic Content',
-    readTime: `${Math.floor(Math.random() * 5) + 2} min read`,
-    publishedAt: new Date().toISOString(),
-    bookmarked: false,
+    id: article.id,
+    title: article.title,
+    subtitle: article.subtitle,
+    imageUrl: article.image_url || '/api/placeholder/400/250',
+    source: article.author,
+    category: article.category,
+    readTime: article.read_time,
+    publishedAt: article.publish_date || article.created_at,
+    bookmarked: article.bookmarked,
   };
 };
 
@@ -85,43 +37,87 @@ const chunkContent = (content: ContentItem[]) => {
 };
 
 export default function DiscoverPage() {
-  const [content, setContent] = useState<ContentItem[]>([
-    INITIAL_HERO_CONTENT, 
-    ...INITIAL_STREAM_CONTENT
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [allShownArticles, setAllShownArticles] = useState<ContentItem[]>([]);
+  const [currentCycle, setCurrentCycle] = useState(0);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const handleBookmarkToggle = (contentId: string) => {
-    setContent(prev => 
-      prev.map(item => 
-        item.id === contentId 
-          ? { ...item, bookmarked: !item.bookmarked }
-          : item
-      )
-    );
-  };
+  // Fetch published articles from Supabase
+  const { 
+    data: articlesData, 
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage 
+  } = useArticles({ status: 'published' });
 
-  const fetchMoreContent = useCallback(async () => {
-    if (isLoading) return;
-    setIsLoading(true);
+  const toggleBookmarkMutation = useToggleBookmark();
+  const incrementViewsMutation = useIncrementViews();
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  // Flatten all articles from all pages
+  const allArticles = articlesData?.pages.flatMap(page => (page as any)?.articles || []) || [];
+  
+  // Convert to ContentItem format
+  const convertedArticles = allArticles.map(convertArticleToContentItem);
 
-    const newItems = Array.from({ length: 4 }).map((_, i) =>
-      generateMockItem(content.length + i)
-    );
+  const handleBookmarkToggle = useCallback(async (contentId: string) => {
+    try {
+      await toggleBookmarkMutation.mutateAsync(contentId);
+      
+      // Update local state optimistically
+      setAllShownArticles(prev => 
+        prev.map(item => 
+          item.id === contentId 
+            ? { ...item, bookmarked: !item.bookmarked }
+            : item
+        )
+      );
+    } catch (error) {
+      console.error('Failed to toggle bookmark:', error);
+    }
+  }, [toggleBookmarkMutation]);
 
-    setContent(prev => [...prev, ...newItems]);
-    setIsLoading(false);
-  }, [isLoading, content.length]);
+  const handleContentClick = useCallback(async (content: ContentItem) => {
+    try {
+      await incrementViewsMutation.mutateAsync(content.id);
+    } catch (error) {
+      console.error('Failed to increment views:', error);
+    }
+  }, [incrementViewsMutation]);
+
+  const loadMoreContent = useCallback(async () => {
+    if (isLoading || isFetchingNextPage) return;
+
+    // If we have more pages to fetch, fetch them
+    if (hasNextPage) {
+      await fetchNextPage();
+      return;
+    }
+
+    // If no more pages and we have articles, restart the cycle
+    if (convertedArticles.length > 0) {
+      const articlesToAdd = convertedArticles.slice(0, 4); // Add 4 articles per cycle
+      
+      if (articlesToAdd.length > 0) {
+        setAllShownArticles(prev => [...prev, ...articlesToAdd]);
+        setCurrentCycle(prev => prev + 1);
+      }
+    }
+  }, [isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, convertedArticles]);
+
+  // Initial load and infinite scroll setup
+  useEffect(() => {
+    if (convertedArticles.length > 0 && allShownArticles.length === 0) {
+      // Initial load - add first batch of articles
+      const initialArticles = convertedArticles.slice(0, 4);
+      setAllShownArticles(initialArticles);
+    }
+  }, [convertedArticles, allShownArticles.length]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
-        if (entries[0].isIntersecting && !isLoading) {
-          fetchMoreContent();
+        if (entries[0].isIntersecting) {
+          loadMoreContent();
         }
       },
       { threshold: 1.0 }
@@ -137,9 +133,26 @@ export default function DiscoverPage() {
         observer.unobserve(currentSentinel);
       }
     };
-  }, [fetchMoreContent, isLoading]);
+  }, [loadMoreContent]);
 
-  const chunked = chunkContent(content);
+  // Update shown articles when new data arrives
+  useEffect(() => {
+    if (convertedArticles.length > 0) {
+      const currentlyShown = allShownArticles.length;
+      const cycleSize = 4;
+      const totalCycles = Math.floor(currentlyShown / cycleSize);
+      
+      // If we have new articles and are not in the middle of adding them
+      if (convertedArticles.length > totalCycles * cycleSize) {
+        const newArticles = convertedArticles.slice(currentlyShown, currentlyShown + cycleSize);
+        if (newArticles.length > 0) {
+          setAllShownArticles(prev => [...prev, ...newArticles]);
+        }
+      }
+    }
+  }, [convertedArticles, allShownArticles.length]);
+
+  const chunked = chunkContent(allShownArticles);
 
   return (
     <>
@@ -147,30 +160,58 @@ export default function DiscoverPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <main className="pb-16 pt-12 transform scale-75 origin-top">
-            <div className="space-y-6">
-              {chunked.map((chunk, index) => (
-                <section key={`chunk-${index}`} className="space-y-6">
-                  {chunk[0] && (
-                     <ContentHero
-                      content={chunk[0]}
-                      onBookmarkToggle={() => handleBookmarkToggle(chunk[0].id)}
-                    />
-                  )}
-                  {chunk.length > 1 && (
-                    <ContentStream
-                      content={chunk.slice(1)}
-                      onBookmarkToggle={handleBookmarkToggle}
-                    />
-                  )}
-                </section>
-              ))}
-            </div>
+            {allShownArticles.length === 0 && isLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="w-8 h-8 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+              </div>
+            ) : allShownArticles.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <h2 className="text-2xl font-bold mb-4">No Articles Available</h2>
+                <p className="text-muted-foreground mb-6">
+                  There are no published articles yet. Check back later or create some articles!
+                </p>
+                <a 
+                  href="/articles/editor" 
+                  className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                >
+                  Create Your First Article
+                </a>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {chunked.map((chunk, index) => (
+                  <section key={`chunk-${index}`} className="space-y-6">
+                                         {chunk[0] && (
+                       <ContentHero
+                         content={chunk[0]}
+                         onBookmarkToggle={() => handleBookmarkToggle(chunk[0].id)}
+                       />
+                     )}
+                     {chunk.length > 1 && (
+                       <ContentStream
+                         content={chunk.slice(1)}
+                         onBookmarkToggle={handleBookmarkToggle}
+                       />
+                     )}
+                  </section>
+                ))}
+              </div>
+            )}
             
             <div ref={sentinelRef} className="h-10" />
 
-            {isLoading && (
+            {(isLoading || isFetchingNextPage) && allShownArticles.length > 0 && (
               <div className="flex justify-center items-center py-6">
                 <div className="w-8 h-8 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+              </div>
+            )}
+
+            {/* Show cycle indicator when restarting articles */}
+            {!hasNextPage && convertedArticles.length > 0 && currentCycle > 0 && (
+              <div className="flex justify-center items-center py-6">
+                <div className="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                  Showing articles again • Cycle {currentCycle + 1}
+                </div>
               </div>
             )}
           </main>

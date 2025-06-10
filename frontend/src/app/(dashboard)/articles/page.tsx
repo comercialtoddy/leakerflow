@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
@@ -12,14 +12,12 @@ import {
   Eye, 
   BookmarkCheck, 
   Upload,
-  Image as ImageIcon,
-  Video,
   FileText,
-  Tag,
   TrendingUp,
   Calendar,
   Users,
-  BarChart3
+  BarChart3,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,88 +35,58 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { ContentItem } from '@/types/discover';
 import Link from 'next/link';
-
-interface ArticleStats {
-  totalArticles: number;
-  publishedArticles: number;
-  draftArticles: number;
-  totalViews: number;
-  averageReadTime: string;
-  engagement: number;
-}
-
-interface ExtendedContentItem extends ContentItem {
-  status: 'published' | 'draft' | 'archived';
-  author: string;
-  views: number;
-  engagement: number;
-  tags: string[];
-  content?: string;
-  sources?: string[];
-}
-
-const MOCK_STATS: ArticleStats = {
-  totalArticles: 127,
-  publishedArticles: 89,
-  draftArticles: 38,
-  totalViews: 45670,
-  averageReadTime: '4.2 min',
-  engagement: 78.5,
-};
-
-const MOCK_ARTICLES: ExtendedContentItem[] = [
-  {
-    id: 'hero-1',
-    title: 'Revolutionary AI Project Management is Transforming How Teams Work',
-    subtitle: 'Discover how cutting-edge artificial intelligence is reshaping project workflows...',
-    imageUrl: '/api/placeholder/400/250',
-    source: 'Project X Research',
-    category: 'AI & Automation',
-    readTime: '5 min read',
-    publishedAt: '2024-01-15T10:30:00Z',
-    bookmarked: false,
-    status: 'published',
-    author: 'Alex Chen',
-    views: 12450,
-    engagement: 85.2,
-    tags: ['AI', 'Project Management', 'Automation', 'Productivity'],
-    sources: ['https://example.com/source1', 'https://example.com/source2'],
-  },
-  {
-    id: 'draft-1',
-    title: 'The Future of Remote Work: Trends for 2024',
-    subtitle: 'An in-depth analysis of emerging remote work patterns...',
-    imageUrl: '/api/placeholder/400/250',
-    source: 'Workplace Insights',
-    category: 'Productivity',
-    readTime: '7 min read',
-    publishedAt: '2024-01-10T14:20:00Z',
-    bookmarked: true,
-    status: 'draft',
-    author: 'Sarah Johnson',
-    views: 0,
-    engagement: 0,
-    tags: ['Remote Work', 'Future', 'Productivity', 'Teams'],
-    sources: ['https://example.com/source3'],
-  },
-];
+import { useArticles, useArticleStats, useDeleteArticle, useToggleBookmark } from '@/hooks/react-query/articles/use-articles';
+import { useRouter } from 'next/navigation';
+import type { Article } from '@/lib/supabase/articles';
 
 export default function ArticlesDashboard() {
-  const [articles, setArticles] = useState<ExtendedContentItem[]>(MOCK_ARTICLES);
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  const filteredArticles = articles.filter(article => {
-    const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         article.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = selectedStatus === 'all' || article.status === selectedStatus;
-    const matchesCategory = selectedCategory === 'all' || article.category === selectedCategory;
-    
-    return matchesSearch && matchesStatus && matchesCategory;
+  // React Query hooks
+  const { data: stats, isLoading: statsLoading } = useArticleStats();
+  const { 
+    data: articlesData, 
+    isLoading: articlesLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage 
+  } = useArticles({
+    status: selectedStatus === 'all' ? undefined : selectedStatus,
+    category: selectedCategory === 'all' ? undefined : selectedCategory,
+    search: searchQuery || undefined
   });
+
+  const deleteArticleMutation = useDeleteArticle();
+  const toggleBookmarkMutation = useToggleBookmark();
+
+  // Flatten paginated articles data
+  const articles = articlesData?.pages.flatMap(page => (page as any)?.articles || []) || [];
+
+  const handleEdit = (articleId: string) => {
+    router.push(`/articles/editor?id=${articleId}`);
+  };
+
+  const handleDelete = async (articleId: string) => {
+    if (confirm('Are you sure you want to delete this article?')) {
+      try {
+        await deleteArticleMutation.mutateAsync(articleId);
+      } catch (error) {
+        console.error('Failed to delete article:', error);
+      }
+    }
+  };
+
+  const handleToggleBookmark = async (articleId: string) => {
+    try {
+      await toggleBookmarkMutation.mutateAsync(articleId);
+    } catch (error) {
+      console.error('Failed to toggle bookmark:', error);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -135,6 +103,22 @@ export default function ArticlesDashboard() {
     }
     return views.toString();
   };
+
+  const loadMoreArticles = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
+
+  if (statsLoading || articlesLoading) {
+    return (
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -170,7 +154,7 @@ export default function ArticlesDashboard() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{MOCK_STATS.totalArticles}</div>
+              <div className="text-2xl font-bold">{stats?.totalArticles || 0}</div>
               <p className="text-xs text-muted-foreground">
                 +12% from last month
               </p>
@@ -183,9 +167,9 @@ export default function ArticlesDashboard() {
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{MOCK_STATS.publishedArticles}</div>
+              <div className="text-2xl font-bold">{stats?.publishedArticles || 0}</div>
               <p className="text-xs text-muted-foreground">
-                70% of total articles
+                {stats?.totalArticles ? Math.round((stats.publishedArticles / stats.totalArticles) * 100) : 0}% of total articles
               </p>
             </CardContent>
           </Card>
@@ -196,7 +180,7 @@ export default function ArticlesDashboard() {
               <Edit className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{MOCK_STATS.draftArticles}</div>
+              <div className="text-2xl font-bold">{stats?.draftArticles || 0}</div>
               <p className="text-xs text-muted-foreground">
                 +3 this week
               </p>
@@ -209,7 +193,7 @@ export default function ArticlesDashboard() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatViews(MOCK_STATS.totalViews)}</div>
+              <div className="text-2xl font-bold">{formatViews(stats?.totalViews || 0)}</div>
               <p className="text-xs text-muted-foreground">
                 +8.2% from last week
               </p>
@@ -222,7 +206,7 @@ export default function ArticlesDashboard() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{MOCK_STATS.averageReadTime}</div>
+              <div className="text-2xl font-bold">{stats?.averageReadTime || '0 min'}</div>
               <p className="text-xs text-muted-foreground">
                 Optimal range
               </p>
@@ -235,7 +219,7 @@ export default function ArticlesDashboard() {
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{MOCK_STATS.engagement}%</div>
+              <div className="text-2xl font-bold">{stats?.engagement?.toFixed(1) || 0}%</div>
               <p className="text-xs text-muted-foreground">
                 +2.1% this month
               </p>
@@ -299,7 +283,7 @@ export default function ArticlesDashboard() {
         {/* Articles Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <AnimatePresence>
-            {filteredArticles.map((article, index) => (
+            {articles.map((article, index) => (
               <motion.div
                 key={article.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -310,7 +294,7 @@ export default function ArticlesDashboard() {
                 <Card className="group hover:shadow-lg transition-all duration-300">
                   <div className="relative">
                     <img
-                      src={article.imageUrl}
+                      src={article.image_url || '/api/placeholder/400/250'}
                       alt={article.title}
                       className="w-full h-48 object-cover rounded-t-lg"
                     />
@@ -334,19 +318,18 @@ export default function ArticlesDashboard() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEdit(article.id)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleBookmark(article.id)}>
                             <BookmarkCheck className="mr-2 h-4 w-4" />
                             {article.bookmarked ? 'Unbookmark' : 'Bookmark'}
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => handleDelete(article.id)}
+                          >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
                           </DropdownMenuItem>
@@ -382,7 +365,7 @@ export default function ArticlesDashboard() {
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <div className="flex items-center gap-4">
                           <span>{article.author}</span>
-                          <span>{article.readTime}</span>
+                          <span>{article.read_time}</span>
                         </div>
                         {article.status === 'published' && (
                           <div className="flex items-center gap-2">
@@ -397,7 +380,7 @@ export default function ArticlesDashboard() {
                           <div className="flex-1 bg-muted rounded-full h-2">
                             <div 
                               className="bg-primary h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${article.engagement}%` }}
+                              style={{ width: `${Math.min(article.engagement, 100)}%` }}
                             />
                           </div>
                           <span className="text-xs text-muted-foreground">
@@ -413,7 +396,27 @@ export default function ArticlesDashboard() {
           </AnimatePresence>
         </div>
 
-        {filteredArticles.length === 0 && (
+        {/* Load More Button */}
+        {hasNextPage && (
+          <div className="flex justify-center">
+            <Button 
+              variant="outline" 
+              onClick={loadMoreArticles}
+              disabled={isFetchingNextPage}
+            >
+              {isFetchingNextPage ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                'Load More Articles'
+              )}
+            </Button>
+          </div>
+        )}
+
+        {articles.length === 0 && !articlesLoading && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground mb-4" />

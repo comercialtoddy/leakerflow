@@ -1,7 +1,10 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useArticle, useCreateArticle, useUpdateArticle } from '@/hooks/react-query/articles/use-articles';
+import { toast } from 'sonner';
 import { 
   Save, 
   Eye, 
@@ -19,7 +22,8 @@ import {
   Globe,
   User,
   Clock,
-  Bookmark
+  Bookmark,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +63,11 @@ interface Source {
 }
 
 export default function ArticleEditor() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const articleId = searchParams.get('id');
+  
+  // State
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [content, setContent] = useState('');
@@ -68,31 +77,76 @@ export default function ArticleEditor() {
   const [sources, setSources] = useState<Source[]>([]);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [author, setAuthor] = useState('');
-  const [readTime, setReadTime] = useState('');
   const [status, setStatus] = useState<'draft' | 'published' | 'scheduled'>('draft');
   const [publishDate, setPublishDate] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newSource, setNewSource] = useState({ title: '', url: '', description: '' });
 
-  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  // React Query hooks
+  const { data: existingArticle, isLoading: loadingArticle } = useArticle(articleId);
+  const createArticleMutation = useCreateArticle();
+  const updateArticleMutation = useUpdateArticle();
+
+  const isEditing = !!articleId;
+
+  // Load existing article data when editing
+  useEffect(() => {
+    if (existingArticle) {
+      setTitle(existingArticle.title);
+      setSubtitle(existingArticle.subtitle);
+      setContent(existingArticle.content);
+      setCategory(existingArticle.category);
+      setTags(existingArticle.tags || []);
+      setAuthor(existingArticle.author);
+      setStatus(existingArticle.status);
+      setPublishDate(existingArticle.publish_date ? new Date(existingArticle.publish_date).toISOString().slice(0, 16) : '');
+      
+      // Convert JSONB data back to local state
+      if (existingArticle.sources) {
+        setSources(existingArticle.sources as Source[]);
+      }
+      if (existingArticle.media_items) {
+        setMediaItems(existingArticle.media_items as MediaItem[]);
+      }
+    }
+  }, [existingArticle]);
+
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
+    const articlesService = new (await import('@/lib/supabase/articles')).ArticlesService();
+
+    for (const file of Array.from(files)) {
+      try {
+        // Check file size (15MB limit)
+        const maxSize = 15 * 1024 * 1024; // 15MB
+        if (file.size > maxSize) {
+          toast.error(`File "${file.name}" exceeds 15MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+          continue;
+        }
+
+        toast.info(`Uploading "${file.name}"...`);
+        
+        // Upload file to Supabase Storage
+        const url = await articlesService.uploadFile(file);
+        
         const newMediaItem: MediaItem = {
           id: `media-${Date.now()}-${Math.random()}`,
           type: file.type.startsWith('video/') ? 'video' : 'image',
-          url: e.target?.result as string,
+          url: url,
           name: file.name,
           size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
         };
+        
         setMediaItems(prev => [...prev, newMediaItem]);
-      };
-      reader.readAsDataURL(file);
-    });
+        toast.success(`"${file.name}" uploaded successfully!`);
+      } catch (error: any) {
+        console.error('Upload error:', error);
+        toast.error(`Failed to upload "${file.name}": ${error.message || 'Unknown error'}`);
+      }
+    }
   }, []);
 
   const addTag = useCallback(() => {
@@ -134,23 +188,60 @@ export default function ArticleEditor() {
     return `${minutes} min read`;
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async (saveStatus: 'draft' | 'published' | 'scheduled' = 'draft') => {
+    if (!title.trim() || !subtitle.trim() || !content.trim() || !author.trim()) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
     const articleData = {
-      title,
-      subtitle,
-      content,
+      title: title.trim(),
+      subtitle: subtitle.trim(),
+      content: content.trim(),
       category,
       tags,
-      sources,
-      mediaItems,
-      author,
-      readTime: estimateReadTime(content),
-      status,
-      publishDate,
+      sources: sources,
+      media_items: mediaItems,
+      author: author.trim(),
+      read_time: estimateReadTime(content),
+      status: saveStatus,
+      image_url: mediaItems.length > 0 ? mediaItems[0].url : undefined,
+      publish_date: (saveStatus === 'published' || saveStatus === 'scheduled') ? publishDate : undefined,
     };
-    console.log('Saving article:', articleData);
-    // Here you would typically send this to your API
-  }, [title, subtitle, content, category, tags, sources, mediaItems, author, status, publishDate, estimateReadTime]);
+
+    try {
+      if (isEditing && articleId) {
+        await updateArticleMutation.mutateAsync({
+          id: articleId,
+          ...articleData,
+        });
+        toast.success('Article updated successfully!');
+      } else {
+        await createArticleMutation.mutateAsync(articleData);
+        toast.success('Article created successfully!');
+        router.push('/articles');
+      }
+    } catch (error) {
+      console.error('Error saving article:', error);
+    }
+  }, [
+    title, subtitle, content, category, tags, sources, mediaItems, author, 
+    publishDate, estimateReadTime, isEditing, articleId, updateArticleMutation, 
+    createArticleMutation, router
+  ]);
+
+  if (loadingArticle) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto p-6 flex items-center justify-center">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading article...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -166,9 +257,11 @@ export default function ArticleEditor() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold">Article Editor</h1>
+              <h1 className="text-2xl font-bold">
+                {isEditing ? 'Edit Article' : 'Create Article'}
+              </h1>
               <p className="text-muted-foreground text-sm">
-                Create and edit articles for the Discover platform
+                {isEditing ? 'Edit your article for the Discover platform' : 'Create and edit articles for the Discover platform'}
               </p>
             </div>
           </div>
@@ -178,13 +271,40 @@ export default function ArticleEditor() {
               <Eye className="mr-2 h-4 w-4" />
               Preview
             </Button>
-            <Button size="sm" onClick={handleSave}>
-              <Save className="mr-2 h-4 w-4" />
-              Save Draft
+            <Button 
+              size="sm" 
+              onClick={() => handleSave('draft')}
+              disabled={createArticleMutation.isPending || updateArticleMutation.isPending}
+            >
+              {(createArticleMutation.isPending || updateArticleMutation.isPending) ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Draft
+                </>
+              )}
             </Button>
-            <Button size="sm" variant="default">
-              <Globe className="mr-2 h-4 w-4" />
-              Publish
+            <Button 
+              size="sm" 
+              variant="default"
+              onClick={() => handleSave('published')}
+              disabled={createArticleMutation.isPending || updateArticleMutation.isPending}
+            >
+              {(createArticleMutation.isPending || updateArticleMutation.isPending) ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  <Globe className="mr-2 h-4 w-4" />
+                  Publish
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -230,6 +350,22 @@ export default function ArticleEditor() {
 
                 <div className="space-y-2">
                   <Label htmlFor="content">Content</Label>
+                  
+                  {/* Content size warning */}
+                  {content.length > 180000 && (
+                    <div className={`p-3 rounded-lg text-sm ${
+                      content.length > 200000 
+                        ? 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800' 
+                        : 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
+                    }`}>
+                      {content.length > 200000 ? (
+                        <>⚠️ Content exceeds 200K character limit and will be truncated when saved. Consider breaking this into multiple articles.</>
+                      ) : (
+                        <>⚠️ Content is approaching the 200K character limit ({((content.length / 200000) * 100).toFixed(1)}% used).</>
+                      )}
+                    </div>
+                  )}
+                  
                   <Textarea
                     id="content"
                     placeholder="Write your article content here..."
@@ -238,9 +374,12 @@ export default function ArticleEditor() {
                     rows={15}
                     className="min-h-[400px] font-mono text-sm"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Estimated read time: {estimateReadTime(content)}
-                  </p>
+                  <div className="flex justify-between items-center text-xs text-muted-foreground">
+                    <span>Estimated read time: {estimateReadTime(content)}</span>
+                                                              <span className={content.length > 180000 ? 'text-amber-600' : content.length > 200000 ? 'text-red-600' : ''}>
+                       {content.length.toLocaleString()} / 200,000 characters
+                     </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
