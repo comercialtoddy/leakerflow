@@ -4,6 +4,38 @@
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Create categories table for dynamic category management
+CREATE TABLE IF NOT EXISTS categories (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name text NOT NULL UNIQUE,
+  slug text NOT NULL UNIQUE,
+  icon text NOT NULL DEFAULT '📝',
+  description text,
+  color text DEFAULT '#6366f1',
+  sort_order integer DEFAULT 0,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for categories
+CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
+CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active);
+CREATE INDEX IF NOT EXISTS idx_categories_sort_order ON categories(sort_order);
+
+-- Categories RLS
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view active categories" ON categories
+    FOR SELECT USING (is_active = true);
+
+CREATE POLICY "Authenticated users can manage categories" ON categories
+    FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Authenticated users can insert categories" ON categories
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
 -- Create articles table
 CREATE TABLE IF NOT EXISTS articles (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -138,6 +170,12 @@ CREATE TRIGGER update_articles_updated_at
 DROP TRIGGER IF EXISTS update_article_analytics_updated_at ON article_analytics;
 CREATE TRIGGER update_article_analytics_updated_at 
     BEFORE UPDATE ON article_analytics 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
+CREATE TRIGGER update_categories_updated_at 
+    BEFORE UPDATE ON categories 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
@@ -473,6 +511,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Insert default categories (no hardcoded categories - all dynamic)
+INSERT INTO categories (name, slug, icon, description, color, sort_order, user_id) 
+SELECT 'General', 'general', '📝', 'General articles and content', '#6366f1', 0, id
+FROM auth.users LIMIT 1
+ON CONFLICT (slug) DO NOTHING;
+
 -- Insert some sample data for testing (will be auto-cleaned after 1 week)
 INSERT INTO articles (
     title, 
@@ -492,7 +536,7 @@ INSERT INTO articles (
     'Welcome to Articles Dashboard',
     'This is a sample article to demonstrate the new articles system.',
     'This article demonstrates the new articles management system integrated with Supabase. All articles are now stored in the database and will be automatically cleaned up after one week unless published.',
-    'AI & Automation',
+    'general',
     ARRAY['Welcome', 'System', 'Database'],
     'System',
     'published',

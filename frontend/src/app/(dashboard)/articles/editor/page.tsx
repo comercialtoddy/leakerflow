@@ -4,6 +4,9 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useArticle, useCreateArticle, useUpdateArticle } from '@/hooks/react-query/articles/use-articles';
+import { categoriesService } from '@/lib/supabase/categories';
+import type { Category } from '@/lib/supabase/categories';
+import { RichTextEditor, RichTextEditorRef } from '@/components/ui/rich-text-editor';
 import { toast } from 'sonner';
 import { 
   Save, 
@@ -23,7 +26,9 @@ import {
   User,
   Clock,
   Bookmark,
-  Loader2
+  Loader2,
+  FolderPlus,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,7 +86,13 @@ export default function ArticleEditor() {
   const [publishDate, setPublishDate] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const richTextEditorRef = useRef<RichTextEditorRef>(null);
   const [newSource, setNewSource] = useState({ title: '', url: '', description: '' });
+  
+  // Categories state
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [newCategory, setNewCategory] = useState({ name: '', icon: '📝', color: '#6366f1' });
 
   // React Query hooks
   const { data: existingArticle, isLoading: loadingArticle } = useArticle(articleId);
@@ -89,6 +100,20 @@ export default function ArticleEditor() {
   const updateArticleMutation = useUpdateArticle();
 
   const isEditing = !!articleId;
+
+  // Load categories on mount
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const categoriesList = await categoriesService.getCategories();
+        setCategories(categoriesList);
+      } catch (error) {
+        console.error('Error loading categories:', error);
+        toast.error('Failed to load categories');
+      }
+    };
+    loadCategories();
+  }, []);
 
   // Load existing article data when editing
   useEffect(() => {
@@ -179,6 +204,46 @@ export default function ArticleEditor() {
 
   const removeMediaItem = useCallback((itemId: string) => {
     setMediaItems(prev => prev.filter(item => item.id !== itemId));
+  }, []);
+
+  // Category management functions
+  const createCategory = useCallback(async () => {
+    if (!newCategory.name.trim()) {
+      toast.error('Category name is required');
+      return;
+    }
+
+    try {
+      const category = await categoriesService.createCategory({
+        name: newCategory.name.trim(),
+        icon: newCategory.icon,
+        color: newCategory.color,
+      });
+      
+      setCategories(prev => [...prev, category]);
+      setNewCategory({ name: '', icon: '📝', color: '#6366f1' });
+      toast.success('Category created successfully!');
+    } catch (error) {
+      console.error('Error creating category:', error);
+      toast.error('Failed to create category');
+    }
+  }, [newCategory]);
+
+  const deleteCategory = useCallback(async (categoryId: string) => {
+    try {
+      await categoriesService.deleteCategory(categoryId);
+      setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+      toast.success('Category deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      toast.error('Failed to delete category');
+    }
+  }, []);
+
+  const insertMediaIntoEditor = useCallback((url: string, type: 'image' | 'video') => {
+    if (richTextEditorRef.current) {
+      richTextEditorRef.current.insertMedia(url, type);
+    }
   }, []);
 
   const estimateReadTime = useCallback((text: string) => {
@@ -366,17 +431,17 @@ export default function ArticleEditor() {
                     </div>
                   )}
                   
-                  <Textarea
-                    id="content"
-                    placeholder="Write your article content here..."
+                  <RichTextEditor
+                    ref={richTextEditorRef}
                     value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    rows={15}
-                    className="min-h-[400px] font-mono text-sm"
+                    onChange={setContent}
+                    placeholder="Write your article content here... Use the toolbar for formatting or type in Markdown."
+                    minHeight="500px"
                   />
+                  
                   <div className="flex justify-between items-center text-xs text-muted-foreground">
                     <span>Estimated read time: {estimateReadTime(content)}</span>
-                                                              <span className={content.length > 180000 ? 'text-amber-600' : content.length > 200000 ? 'text-red-600' : ''}>
+                    <span className={content.length > 180000 ? 'text-amber-600' : content.length > 200000 ? 'text-red-600' : ''}>
                        {content.length.toLocaleString()} / 200,000 characters
                      </span>
                   </div>
@@ -439,11 +504,20 @@ export default function ArticleEditor() {
                               <Video className="h-8 w-8 text-muted-foreground" />
                             </div>
                           )}
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => insertMediaIntoEditor(item.url, item.type)}
+                              title="Insert into article"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="destructive"
                               onClick={() => removeMediaItem(item.id)}
+                              title="Remove from library"
                             >
                               <X className="h-4 w-4" />
                             </Button>
@@ -555,19 +629,101 @@ export default function ArticleEditor() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="category">Category</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCategoryManager(!showCategoryManager)}
+                      className="h-6 text-xs"
+                    >
+                      <FolderPlus className="h-3 w-3 mr-1" />
+                      Manage
+                    </Button>
+                  </div>
+                  
                   <Select value={category} onValueChange={setCategory}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ai-automation">AI & Automation</SelectItem>
-                      <SelectItem value="productivity">Productivity</SelectItem>
-                      <SelectItem value="development">Development</SelectItem>
-                      <SelectItem value="business">Business</SelectItem>
-                      <SelectItem value="technology">Technology</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.slug}>
+                          <div className="flex items-center gap-2">
+                            <span>{cat.icon}</span>
+                            <span>{cat.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+
+                  {/* Category Manager */}
+                  {showCategoryManager && (
+                    <div className="p-4 border rounded-lg bg-muted/50 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">Category Management</h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowCategoryManager(false)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      {/* Create new category */}
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-3 gap-2">
+                          <Input
+                            placeholder="Category name"
+                            value={newCategory.name}
+                            onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
+                          />
+                          <Input
+                            placeholder="Icon (emoji)"
+                            value={newCategory.icon}
+                            onChange={(e) => setNewCategory(prev => ({ ...prev, icon: e.target.value }))}
+                            maxLength={2}
+                          />
+                          <Input
+                            type="color"
+                            value={newCategory.color}
+                            onChange={(e) => setNewCategory(prev => ({ ...prev, color: e.target.value }))}
+                          />
+                        </div>
+                        <Button onClick={createCategory} size="sm" className="w-full">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Category
+                        </Button>
+                      </div>
+
+                      {/* Existing categories */}
+                      {categories.length > 0 && (
+                        <div className="space-y-2">
+                          <h5 className="text-sm font-medium">Existing Categories</h5>
+                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                            {categories.map((cat) => (
+                              <div key={cat.id} className="flex items-center justify-between p-2 bg-background rounded border">
+                                <div className="flex items-center gap-2">
+                                  <span>{cat.icon}</span>
+                                  <span className="text-sm">{cat.name}</span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteCategory(cat.id)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">

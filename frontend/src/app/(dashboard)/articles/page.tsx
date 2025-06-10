@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState, useMemo, useCallback, memo, Suspense } from 'react';
+import { motion } from 'motion/react';
 import { 
   Plus, 
   Search, 
@@ -41,6 +41,164 @@ import Link from 'next/link';
 import { useArticles, useDashboardStats, useDeleteArticle, useToggleBookmark } from '@/hooks/react-query/articles/use-articles';
 import { useRouter } from 'next/navigation';
 import type { Article } from '@/lib/supabase/articles';
+import { useDebounce } from '@/hooks/use-debounce';
+
+// Memoized components for better performance
+const StatsCard = memo(({ title, value, subtitle, icon: Icon }: {
+  title: string;
+  value: string | number;
+  subtitle: string;
+  icon: any;
+}) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+      <p className="text-xs text-muted-foreground">{subtitle}</p>
+    </CardContent>
+  </Card>
+));
+
+const ArticleCard = memo(({ 
+  article, 
+  onEdit, 
+  onDelete, 
+  onToggleBookmark,
+  getStatusColor,
+  formatViews 
+}: {
+  article: Article;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onToggleBookmark: (id: string) => void;
+  getStatusColor: (status: string) => string;
+  formatViews: (views: number) => string;
+}) => (
+  <Card className="group hover:shadow-lg transition-shadow duration-200">
+    <div className="relative">
+      <img
+        src={article.image_url || '/api/placeholder/400/250'}
+        alt={article.title}
+        className="w-full h-48 object-cover rounded-t-lg"
+        loading="lazy"
+      />
+      <div className="absolute top-3 left-3 flex gap-2">
+        <Badge className={getStatusColor(article.status)}>
+          {article.status}
+        </Badge>
+        <Badge variant="secondary">
+          {article.category}
+        </Badge>
+      </div>
+      <div className="absolute top-3 right-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit(article.id)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onToggleBookmark(article.id)}>
+              <BookmarkCheck className="mr-2 h-4 w-4" />
+              {article.bookmarked ? 'Unbookmark' : 'Bookmark'}
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              className="text-destructive"
+              onClick={() => onDelete(article.id)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+    
+    <CardContent className="p-6">
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-semibold text-lg line-clamp-2 mb-2">
+            {article.title}
+          </h3>
+          <p className="text-muted-foreground text-sm line-clamp-2">
+            {article.subtitle}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-1">
+          {article.tags.slice(0, 3).map((tag) => (
+            <Badge key={tag} variant="outline" className="text-xs">
+              {tag}
+            </Badge>
+          ))}
+          {article.tags.length > 3 && (
+            <Badge variant="outline" className="text-xs">
+              +{article.tags.length - 3}
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-4">
+            <span>{article.author}</span>
+            <span>{article.read_time}</span>
+          </div>
+          {article.status === 'published' && (
+            <div className="flex items-center gap-2">
+              <Users className="h-3 w-3" />
+              <span>{formatViews(article.views)} views</span>
+            </div>
+          )}
+        </div>
+
+        {article.status === 'published' && (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-muted rounded-full h-2">
+              <div 
+                className="bg-primary h-2 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(article.engagement, 100)}%` }}
+              />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {article.engagement}% engagement
+            </span>
+          </div>
+        )}
+      </div>
+    </CardContent>
+  </Card>
+));
+
+const LoadingSkeleton = memo(() => (
+  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    {Array.from({ length: 6 }).map((_, i) => (
+      <Card key={i} className="animate-pulse">
+        <div className="h-48 bg-muted rounded-t-lg" />
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <div className="h-4 bg-muted rounded w-3/4" />
+            <div className="h-3 bg-muted rounded w-1/2" />
+            <div className="flex gap-2">
+              <div className="h-5 bg-muted rounded w-16" />
+              <div className="h-5 bg-muted rounded w-20" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+));
 
 export default function ArticlesDashboard() {
   const router = useRouter();
@@ -48,7 +206,10 @@ export default function ArticlesDashboard() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // React Query hooks
+  // Debounce search query for better performance
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  // React Query hooks with optimized stale time
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { 
     data: articlesData, 
@@ -59,20 +220,24 @@ export default function ArticlesDashboard() {
   } = useArticles({
     status: selectedStatus === 'all' ? undefined : selectedStatus,
     category: selectedCategory === 'all' ? undefined : selectedCategory,
-    search: searchQuery || undefined
+    search: debouncedSearchQuery || undefined
   });
 
   const deleteArticleMutation = useDeleteArticle();
   const toggleBookmarkMutation = useToggleBookmark();
 
-  // Flatten paginated articles data
-  const articles = articlesData?.pages.flatMap(page => (page as any)?.articles || []) || [];
+  // Memoized computed values
+  const articles = useMemo(() => 
+    articlesData?.pages.flatMap(page => (page as any)?.articles || []) || [], 
+    [articlesData]
+  );
 
-  const handleEdit = (articleId: string) => {
+  // Memoized callbacks
+  const handleEdit = useCallback((articleId: string) => {
     router.push(`/articles/editor?id=${articleId}`);
-  };
+  }, [router]);
 
-  const handleDelete = async (articleId: string) => {
+  const handleDelete = useCallback(async (articleId: string) => {
     if (confirm('Are you sure you want to delete this article?')) {
       try {
         await deleteArticleMutation.mutateAsync(articleId);
@@ -80,43 +245,114 @@ export default function ArticlesDashboard() {
         console.error('Failed to delete article:', error);
       }
     }
-  };
+  }, [deleteArticleMutation]);
 
-  const handleToggleBookmark = async (articleId: string) => {
+  const handleToggleBookmark = useCallback(async (articleId: string) => {
     try {
       await toggleBookmarkMutation.mutateAsync(articleId);
     } catch (error) {
       console.error('Failed to toggle bookmark:', error);
     }
-  };
+  }, [toggleBookmarkMutation]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'published': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
       case 'draft': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
       case 'archived': return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
     }
-  };
+  }, []);
 
-  const formatViews = (views: number) => {
+  const formatViews = useCallback((views: number) => {
     if (views >= 1000) {
       return `${(views / 1000).toFixed(1)}K`;
     }
     return views.toString();
-  };
+  }, []);
 
-  const loadMoreArticles = () => {
+  const loadMoreArticles = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Memoized stats cards
+  const statsCards = useMemo(() => [
+    {
+      title: 'Total Articles',
+      icon: FileText,
+      value: stats?.total_articles || 0,
+      subtitle: '+12% from last month'
+    },
+    {
+      title: 'Published',
+      icon: Eye,
+      value: formatViews(stats?.total_views || 0),
+      subtitle: stats?.weekly_growth?.views ? 
+        `${stats.weekly_growth.views > 0 ? '+' : ''}${stats.weekly_growth.views.toFixed(1)}% from last week` :
+        '+0% from last week'
+    },
+    {
+      title: 'Engagement',
+      icon: BarChart3,
+      value: `${stats?.total_engagement?.toFixed(1) || 0}%`,
+      subtitle: stats?.weekly_growth?.engagement ? 
+        `${stats.weekly_growth.engagement > 0 ? '+' : ''}${stats.weekly_growth.engagement.toFixed(1)}% this month` :
+        '+0% this month'
+    },
+    {
+      title: 'Total Shares',
+      icon: Share2,
+      value: stats?.total_shares || 0,
+      subtitle: 'Across all articles'
+    },
+    {
+      title: 'Total Saves',
+      icon: Bookmark,
+      value: stats?.total_saves || 0,
+      subtitle: 'Articles saved by users'
+    },
+    {
+      title: 'New Articles',
+      icon: Plus,
+      value: stats?.weekly_growth?.articles || 0,
+      subtitle: 'This week'
+    }
+  ], [stats, formatViews]);
 
   if (statsLoading || articlesLoading) {
     return (
       <div className="min-h-screen bg-background p-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Header skeleton */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="h-8 bg-muted rounded w-64 mb-2" />
+              <div className="h-4 bg-muted rounded w-96" />
+            </div>
+            <div className="flex gap-3">
+              <div className="h-9 bg-muted rounded w-20" />
+              <div className="h-9 bg-muted rounded w-28" />
+            </div>
+          </div>
+          
+          {/* Stats skeleton */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader className="pb-2">
+                  <div className="h-4 bg-muted rounded w-24" />
+                </CardHeader>
+                <CardContent>
+                  <div className="h-8 bg-muted rounded w-16 mb-2" />
+                  <div className="h-3 bg-muted rounded w-32" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <LoadingSkeleton />
         </div>
       </div>
     );
@@ -150,83 +386,15 @@ export default function ArticlesDashboard() {
 
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Articles</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.total_articles || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                +12% from last month
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Published</CardTitle>
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatViews(stats?.total_views || 0)}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats?.weekly_growth?.views ? `${stats.weekly_growth.views > 0 ? '+' : ''}${stats.weekly_growth.views.toFixed(1)}%` : '+0%'} from last week
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Engagement</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.total_engagement?.toFixed(1) || 0}%</div>
-              <p className="text-xs text-muted-foreground">
-                {stats?.weekly_growth?.engagement ? `${stats.weekly_growth.engagement > 0 ? '+' : ''}${stats.weekly_growth.engagement.toFixed(1)}%` : '+0%'} this month
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Shares</CardTitle>
-              <Share2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.total_shares || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                Across all articles
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Saves</CardTitle>
-              <Bookmark className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.total_saves || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                Articles saved by users
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">New Articles</CardTitle>
-              <Plus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.weekly_growth?.articles || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                This week
-              </p>
-            </CardContent>
-          </Card>
+          {statsCards.map((stat, index) => (
+            <StatsCard
+              key={index}
+              title={stat.title}
+              value={stat.value}
+              subtitle={stat.subtitle}
+              icon={stat.icon}
+            />
+          ))}
         </div>
 
         {/* Filters and Search */}
@@ -283,120 +451,28 @@ export default function ArticlesDashboard() {
         </Card>
 
         {/* Articles Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <AnimatePresence>
-            {articles.map((article, index) => (
+        <Suspense fallback={<LoadingSkeleton />}>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {articles.map((article) => (
               <motion.div
                 key={article.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
+                transition={{ duration: 0.2 }}
+                layout
               >
-                <Card className="group hover:shadow-lg transition-all duration-300">
-                  <div className="relative">
-                    <img
-                      src={article.image_url || '/api/placeholder/400/250'}
-                      alt={article.title}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                    <div className="absolute top-3 left-3 flex gap-2">
-                      <Badge className={getStatusColor(article.status)}>
-                        {article.status}
-                      </Badge>
-                      <Badge variant="secondary">
-                        {article.category}
-                      </Badge>
-                    </div>
-                    <div className="absolute top-3 right-3">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(article.id)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleBookmark(article.id)}>
-                            <BookmarkCheck className="mr-2 h-4 w-4" />
-                            {article.bookmarked ? 'Unbookmark' : 'Bookmark'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={() => handleDelete(article.id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                  
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="font-semibold text-lg line-clamp-2 mb-2">
-                          {article.title}
-                        </h3>
-                        <p className="text-muted-foreground text-sm line-clamp-2">
-                          {article.subtitle}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1">
-                        {article.tags.slice(0, 3).map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {article.tags.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{article.tags.length - 3}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <div className="flex items-center gap-4">
-                          <span>{article.author}</span>
-                          <span>{article.read_time}</span>
-                        </div>
-                        {article.status === 'published' && (
-                          <div className="flex items-center gap-2">
-                            <Users className="h-3 w-3" />
-                            <span>{formatViews(article.views)} views</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {article.status === 'published' && (
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-muted rounded-full h-2">
-                            <div 
-                              className="bg-primary h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${Math.min(article.engagement, 100)}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {article.engagement}% engagement
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                <ArticleCard
+                  article={article}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onToggleBookmark={handleToggleBookmark}
+                  getStatusColor={getStatusColor}
+                  formatViews={formatViews}
+                />
               </motion.div>
             ))}
-          </AnimatePresence>
-        </div>
+          </div>
+        </Suspense>
 
         {/* Load More Button */}
         {hasNextPage && (

@@ -65,12 +65,12 @@ export default function DiscoverPage() {
       
       // Update local state optimistically
       setAllShownArticles(prev => 
-        prev.map(item => 
-          item.id === contentId 
-            ? { ...item, bookmarked: !item.bookmarked }
-            : item
-        )
-      );
+      prev.map(item => 
+        item.id === contentId 
+          ? { ...item, bookmarked: !item.bookmarked }
+          : item
+      )
+    );
     } catch (error) {
       console.error('Failed to toggle bookmark:', error);
     }
@@ -178,24 +178,24 @@ export default function DiscoverPage() {
                 </a>
               </div>
             ) : (
-              <div className="space-y-6">
-                {chunked.map((chunk, index) => (
-                  <section key={`chunk-${index}`} className="space-y-6">
-                                         {chunk[0] && (
-                       <ContentHero
-                         content={chunk[0]}
-                         onBookmarkToggle={() => handleBookmarkToggle(chunk[0].id)}
-                       />
-                     )}
-                     {chunk.length > 1 && (
-                       <ContentStream
-                         content={chunk.slice(1)}
-                         onBookmarkToggle={handleBookmarkToggle}
-                       />
-                     )}
-                  </section>
-                ))}
-              </div>
+            <div className="space-y-6">
+              {chunked.map((chunk, index) => (
+                <section key={`chunk-${index}`} className="space-y-6">
+                  {chunk[0] && (
+                     <ContentHero
+                      content={chunk[0]}
+                      onBookmarkToggle={() => handleBookmarkToggle(chunk[0].id)}
+                    />
+                  )}
+                  {chunk.length > 1 && (
+                    <ContentStream
+                      content={chunk.slice(1)}
+                      onBookmarkToggle={handleBookmarkToggle}
+                    />
+                  )}
+                </section>
+              ))}
+            </div>
             )}
             
             <div ref={sentinelRef} className="h-10" />
