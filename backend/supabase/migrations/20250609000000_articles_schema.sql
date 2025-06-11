@@ -139,10 +139,7 @@ CREATE TRIGGER update_article_analytics_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_categories_updated_at 
-    BEFORE UPDATE ON categories 
-    FOR EACH ROW 
-    EXECUTE FUNCTION update_updated_at_column();
+-- Categories trigger is handled in categories_schema.sql migration
 
 -- Row Level Security (RLS)
 ALTER TABLE articles ENABLE ROW LEVEL SECURITY;

@@ -6,40 +6,34 @@ export interface Database {
           id: string;
           name: string;
           slug: string;
-          icon: string;
           description: string | null;
-          color: string;
           sort_order: number;
           is_active: boolean;
           created_at: string;
           updated_at: string;
-          user_id: string;
+          user_id: string | null;
         };
         Insert: {
           id?: string;
           name: string;
           slug?: string;
-          icon?: string;
           description?: string | null;
-          color?: string;
           sort_order?: number;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
-          user_id: string;
+          user_id?: string | null;
         };
         Update: {
           id?: string;
           name?: string;
           slug?: string;
-          icon?: string;
           description?: string | null;
-          color?: string;
           sort_order?: number;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
-          user_id?: string;
+          user_id?: string | null;
         };
       };
       articles: {
