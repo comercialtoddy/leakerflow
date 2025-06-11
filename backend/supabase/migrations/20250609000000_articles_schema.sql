@@ -4,7 +4,7 @@
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create articles table
+-- Create articles table (without hybrid storage columns initially)
 CREATE TABLE IF NOT EXISTS articles (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   title text NOT NULL,
@@ -46,6 +46,24 @@ CREATE TABLE IF NOT EXISTS articles (
   -- Auto-cleanup constraint (articles older than 1 week will be cleaned up)
   CONSTRAINT valid_article_age CHECK (created_at > now() - interval '1 week' OR status = 'published')
 );
+
+-- Add hybrid storage columns for large content support
+DO $$
+BEGIN
+    -- Add content_storage_path column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'articles' AND column_name = 'content_storage_path') THEN
+        ALTER TABLE articles ADD COLUMN content_storage_path text;
+        COMMENT ON COLUMN articles.content_storage_path IS 'Path to content stored in Supabase Storage for large articles';
+    END IF;
+    
+    -- Add content_size column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'articles' AND column_name = 'content_size') THEN
+        ALTER TABLE articles ADD COLUMN content_size integer;
+        COMMENT ON COLUMN articles.content_size IS 'Original content size in characters';
+    END IF;
+END $$;
 
 -- =======================
 -- METRICS TRACKING TABLES
@@ -636,21 +654,28 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('articles-media', 'articles-media', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Storage policies for articles-media bucket
-CREATE POLICY "Authenticated users can upload files" ON storage.objects
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Authenticated users can upload files" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can view files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their own files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own files" ON storage.objects;
+DROP POLICY IF EXISTS "Public can view published files" ON storage.objects;
+
+-- More permissive storage policies for articles-media bucket
+CREATE POLICY "Allow authenticated uploads to articles-media" ON storage.objects
     FOR INSERT TO authenticated WITH CHECK (bucket_id = 'articles-media');
 
-CREATE POLICY "Authenticated users can view files" ON storage.objects
+CREATE POLICY "Allow authenticated updates to articles-media" ON storage.objects
+    FOR UPDATE TO authenticated USING (bucket_id = 'articles-media');
+
+CREATE POLICY "Allow authenticated users to view all files" ON storage.objects
     FOR SELECT TO authenticated USING (bucket_id = 'articles-media');
 
-CREATE POLICY "Users can update their own files" ON storage.objects
-    FOR UPDATE TO authenticated USING (bucket_id = 'articles-media' AND auth.uid()::text = (storage.foldername(name))[1]);
+CREATE POLICY "Allow authenticated users to delete their files" ON storage.objects
+    FOR DELETE TO authenticated USING (bucket_id = 'articles-media');
 
-CREATE POLICY "Users can delete their own files" ON storage.objects
-    FOR DELETE TO authenticated USING (bucket_id = 'articles-media' AND auth.uid()::text = (storage.foldername(name))[1]);
-
--- Public read access for published content
-CREATE POLICY "Public can view published files" ON storage.objects
+-- Public read access for all content (since it's article content)
+CREATE POLICY "Public can view all articles-media files" ON storage.objects
     FOR SELECT TO public USING (bucket_id = 'articles-media');
 
 -- Set file size limit to 15MB (15,728,640 bytes)

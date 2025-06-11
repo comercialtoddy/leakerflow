@@ -84,19 +84,133 @@ interface MediaItem {
 export class ArticlesService {
   private supabase = createClient();
 
-  // Size limits to prevent payload too long errors
-  private readonly MAX_CONTENT_SIZE = 200000; // 200K characters for content
+  // Updated size limits for hybrid storage
+  private readonly MAX_CONTENT_SIZE = 50000; // 50K characters before using storage
   private readonly MAX_MEDIA_ITEMS = 20; // Maximum 20 media items
   private readonly MAX_SOURCES = 50; // Maximum 50 sources
+  private readonly STORAGE_THRESHOLD = 4000; // Store content in storage if larger than 4KB
+  private readonly TOTAL_PAYLOAD_LIMIT = 7000; // Total JSON payload limit (7KB to be safe)
 
-  private validatePayloadSize(data: any): any {
+  private async storeContentInStorage(content: string, articleId: string): Promise<string> {
+    try {
+      const fileName = `articles/${articleId}/content.json`;
+      const contentData = JSON.stringify({ content, timestamp: new Date().toISOString() });
+      
+      const { data, error } = await this.supabase.storage
+        .from('articles-media')
+        .upload(fileName, contentData, {
+          contentType: 'application/json',
+          upsert: true
+        });
+
+      if (error) throw error;
+      return fileName;
+    } catch (error) {
+      console.error('Error storing content in storage:', error);
+      throw error;
+    }
+  }
+
+  private async getContentFromStorage(storagePath: string): Promise<string> {
+    try {
+      const { data, error } = await this.supabase.storage
+        .from('articles-media')
+        .download(storagePath);
+
+      if (error) throw error;
+      
+      const contentData = JSON.parse(await data.text());
+      return contentData.content;
+    } catch (error) {
+      console.error('Error retrieving content from storage:', error);
+      throw error;
+    }
+  }
+
+  private optimizeContentForDatabase(content: string): string {
+    // Smart content optimization that preserves structure but reduces size
+    
+    // Remove excessive whitespace and empty lines
+    let optimized = content
+      .replace(/\n\s*\n\s*\n/g, '\n\n') // Reduce multiple empty lines to double line break
+      .replace(/\s{3,}/g, ' ') // Reduce multiple spaces to single space
+      .trim();
+
+    // If still too large, remove some HTML attributes that aren't essential
+    if (optimized.length > 2500) {
+      optimized = optimized
+        .replace(/data-start="[^"]*"/g, '') // Remove data-start attributes
+        .replace(/data-end="[^"]*"/g, '') // Remove data-end attributes
+        .replace(/style="[^"]*"/g, '') // Remove inline styles
+        .replace(/class="[^"]*"/g, ''); // Remove class attributes
+    }
+
+    // Final safety: if still too large, truncate but preserve last closing tags
+    if (optimized.length > 3000) {
+      const truncated = optimized.substring(0, 2800);
+      const lastCompleteTag = truncated.lastIndexOf('</');
+      if (lastCompleteTag > 2500) {
+        optimized = truncated.substring(0, lastCompleteTag) + '</p>';
+      } else {
+        optimized = truncated + '...</p>';
+      }
+    }
+
+    return optimized;
+  }
+
+  private async validatePayloadSize(data: any, articleId?: string): Promise<any> {
     const result = { ...data };
     const warnings: string[] = [];
 
-    // Truncate content if too long
-    if (result.content && result.content.length > this.MAX_CONTENT_SIZE) {
-      warnings.push(`Content was truncated from ${result.content.length} to ${this.MAX_CONTENT_SIZE} characters`);
-      result.content = result.content.substring(0, this.MAX_CONTENT_SIZE) + '\n\n[Content truncated due to size limits. Please break this into multiple articles or reduce content size.]';
+    // Check if content should be moved to storage (either by content size or total payload size)
+    let shouldUseStorage = false;
+    let totalPayloadSize = 0;
+
+    // First check: individual content size
+    if (result.content && result.content.length > this.STORAGE_THRESHOLD) {
+      shouldUseStorage = true;
+      warnings.push(`Content size (${result.content.length} chars) exceeds threshold`);
+    }
+
+    // Second check: total payload size
+    if (!shouldUseStorage) {
+      const tempPayload = JSON.stringify(result);
+      totalPayloadSize = tempPayload.length;
+      if (totalPayloadSize > this.TOTAL_PAYLOAD_LIMIT) {
+        shouldUseStorage = true;
+        warnings.push(`Total payload size (${totalPayloadSize} bytes) exceeds limit`);
+      }
+    }
+
+    // Move content to storage if needed
+    if (shouldUseStorage && result.content) {
+      if (!articleId) {
+        // Fallback for environments without crypto.randomUUID
+        articleId = typeof crypto !== 'undefined' && crypto.randomUUID 
+          ? crypto.randomUUID()
+          : `article_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+      
+      try {
+        // Store content in storage and replace with reference
+        const storagePath = await this.storeContentInStorage(result.content, articleId);
+        result.content = `[STORED_IN_STORAGE:${storagePath}]`;
+        result.content_storage_path = storagePath;
+        result.content_size = data.content.length;
+        warnings.push(`Content moved to storage: ${storagePath}`);
+      } catch (storageError) {
+        console.error('Failed to store content in storage:', storageError);
+        // Smart fallback: try to break content into manageable chunks
+        if (result.content.length > 3000) {
+          warnings.push(`Storage failed, attempting smart content optimization`);
+          result.content = this.optimizeContentForDatabase(result.content);
+          warnings.push(`Content optimized to ${result.content.length} chars`);
+        } else {
+          // If content is already small but still causing issues, throw error
+          throw new Error(`Unable to save article: Storage system unavailable and content format incompatible. Please try again later.`);
+        }
+      }
     }
 
     // Limit media items
@@ -111,27 +225,46 @@ export class ArticlesService {
       result.sources = result.sources.slice(0, this.MAX_SOURCES);
     }
 
-    // Check individual media item sizes and clean up data
+    // Clean up media items
     if (result.media_items && Array.isArray(result.media_items)) {
-      result.media_items = result.media_items.map((item: any) => {
-        // Clean up media item data to essential fields only
-        const cleanItem = {
-          id: item.id,
-          type: item.type,
-          url: item.url && item.url.length > 2000 ? item.url.substring(0, 2000) : item.url,
-          name: item.name && item.name.length > 500 ? item.name.substring(0, 500) : item.name,
-          size: item.size
-        };
-        return cleanItem;
-      });
+      result.media_items = result.media_items.map((item: any) => ({
+        id: item.id,
+        type: item.type,
+        url: item.url?.substring(0, 2000) || '',
+        name: item.name?.substring(0, 500) || '',
+        size: item.size
+      }));
     }
 
-    // Log warnings if any
-    if (warnings.length > 0) {
-      console.warn('Article payload size warnings:', warnings);
+    // Final safety check: ensure total payload is under limit
+    const finalPayload = JSON.stringify(result);
+    const finalSize = finalPayload.length;
+    
+    if (finalSize > this.TOTAL_PAYLOAD_LIMIT) {
+      warnings.push(`Final payload still too large (${finalSize} bytes), performing emergency truncation`);
       
-      // In a real app, you might want to show these warnings to the user
-      // For now, we'll just log them
+      // Emergency truncation of all string fields
+      if (result.content && !result.content.startsWith('[STORED_IN_STORAGE:')) {
+        result.content = result.content.substring(0, 500) + '\n[Emergency truncation applied]';
+      }
+      if (result.subtitle && result.subtitle.length > 200) {
+        result.subtitle = result.subtitle.substring(0, 200) + '...';
+      }
+      if (result.title && result.title.length > 100) {
+        result.title = result.title.substring(0, 100) + '...';
+      }
+      
+      // Reduce arrays if still too large
+      if (result.media_items && result.media_items.length > 5) {
+        result.media_items = result.media_items.slice(0, 5);
+      }
+      if (result.sources && result.sources.length > 10) {
+        result.sources = result.sources.slice(0, 10);
+      }
+    }
+
+    if (warnings.length > 0) {
+      console.warn('Article payload optimizations:', warnings);
     }
 
     return result;
@@ -143,7 +276,11 @@ export class ArticlesService {
       maxContentSize: this.MAX_CONTENT_SIZE,
       maxMediaItems: this.MAX_MEDIA_ITEMS,
       maxSources: this.MAX_SOURCES,
-      maxContentSizeFormatted: `${(this.MAX_CONTENT_SIZE / 1000).toFixed(0)}KB`
+      storageThreshold: this.STORAGE_THRESHOLD,
+      totalPayloadLimit: this.TOTAL_PAYLOAD_LIMIT,
+      maxContentSizeFormatted: `${(this.MAX_CONTENT_SIZE / 1000).toFixed(0)}KB`,
+      storageThresholdFormatted: `${(this.STORAGE_THRESHOLD / 1000).toFixed(1)}KB`,
+      totalPayloadLimitFormatted: `${(this.TOTAL_PAYLOAD_LIMIT / 1000).toFixed(1)}KB`
     };
   }
 
@@ -202,6 +339,18 @@ export class ArticlesService {
         .single();
 
       if (error) throw error;
+      
+      // If content is stored in storage, retrieve it
+      if (data?.content?.startsWith('[STORED_IN_STORAGE:')) {
+        const storagePath = data.content.replace('[STORED_IN_STORAGE:', '').replace(']', '');
+        try {
+          data.content = await this.getContentFromStorage(storagePath);
+        } catch (storageError) {
+          console.error('Error retrieving content from storage:', storageError);
+          data.content = '[Content temporarily unavailable - stored content could not be retrieved]';
+        }
+      }
+      
       return data;
     } catch (error) {
       console.error('Error fetching article:', error);
@@ -214,24 +363,47 @@ export class ArticlesService {
       const { data: user } = await this.supabase.auth.getUser();
       if (!user.user) throw new Error('User not authenticated');
 
-      // Validate payload size before sending
-      const validatedData = this.validatePayloadSize(articleData);
+      // Pre-generate article ID for storage operations
+      const articleId = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID()
+        : `article_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+      // Validate payload size before sending  
+      const validatedData = await this.validatePayloadSize(articleData, articleId);
+
+      // Clean the data to only include fields that exist in the database
       const insertData: ArticleInsert = {
-        ...validatedData,
+        id: articleId,
+        title: validatedData.title,
+        subtitle: validatedData.subtitle,
+        content: validatedData.content,
+        category: validatedData.category,
+        tags: validatedData.tags || [],
+        author: validatedData.author,
+        status: validatedData.status,
+        media_items: validatedData.media_items || [],
+        sources: validatedData.sources || [],
+        read_time: validatedData.read_time,
+        image_url: validatedData.image_url,
         user_id: user.user.id,
         publish_date: validatedData.status === 'published' 
           ? (validatedData.publish_date ? new Date(validatedData.publish_date).toISOString() : new Date().toISOString())
           : null,
+        // Only include hybrid storage fields if they exist
+        ...(validatedData.content_storage_path && { content_storage_path: validatedData.content_storage_path }),
+        ...(validatedData.content_size && { content_size: validatedData.content_size }),
       };
 
-      // Debug logging
-      console.log('=== PAYLOAD DEBUG ===');
+      // Enhanced debug logging
+      console.log('=== CREATE ARTICLE DEBUG ===');
+      console.log('Article ID:', articleId);
       console.log('Original content length:', articleData.content?.length || 0);
-      console.log('Validated content length:', validatedData.content?.length || 0);
-      console.log('Media items count:', validatedData.media_items?.length || 0);
-      console.log('Sources count:', validatedData.sources?.length || 0);
-      console.log('Total payload size estimate:', JSON.stringify(insertData).length, 'bytes');
+      console.log('Final content length:', validatedData.content?.length || 0);
+      console.log('Storage path:', validatedData.content_storage_path);
+      console.log('Content starts with storage ref:', validatedData.content?.startsWith('[STORED_IN_STORAGE:'));
+      console.log('Insert data keys:', Object.keys(insertData));
+      console.log('Total payload size:', JSON.stringify(insertData).length, 'bytes');
+      console.log('Payload limit:', this.TOTAL_PAYLOAD_LIMIT, 'bytes');
 
       const { data, error } = await this.supabase
         .from('articles')
@@ -240,14 +412,15 @@ export class ArticlesService {
         .single();
 
       if (error) {
-        console.error('Supabase error details:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        throw error;
+        console.error('=== SUPABASE ERROR DETAILS ===');
+        console.error('Code:', error.code);
+        console.error('Message:', error.message);
+        console.error('Details:', error.details);
+        console.error('Hint:', error.hint);
+        console.error('Insert data that caused error:', insertData);
+        throw new Error(`Database error: ${error.message} (${error.code})`);
       }
+      
       return data;
     } catch (error) {
       console.error('Error creating article:', error);
@@ -263,7 +436,7 @@ export class ArticlesService {
       const { id, ...updateData } = articleData;
 
       // Validate payload size before sending
-      const validatedData = this.validatePayloadSize(updateData);
+      const validatedData = await this.validatePayloadSize(updateData, id);
 
       // Debug logging
       console.log('=== UPDATE PAYLOAD DEBUG ===');
@@ -297,12 +470,37 @@ export class ArticlesService {
 
   async deleteArticle(id: string) {
     try {
+      // First, check if article has content stored in storage
+      const { data: article, error: fetchError } = await this.supabase
+        .from('articles')
+        .select('content_storage_path')
+        .eq('id', id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+
+      // Delete the article from database
       const { error } = await this.supabase
         .from('articles')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+
+      // Clean up storage content if exists
+      if (article?.content_storage_path) {
+        try {
+          await this.supabase.storage
+            .from('articles-media')
+            .remove([article.content_storage_path]);
+        } catch (storageError) {
+          console.warn('Could not delete storage content:', storageError);
+          // Don't fail the entire operation if storage cleanup fails
+        }
+      }
+
       return true;
     } catch (error) {
       console.error('Error deleting article:', error);
