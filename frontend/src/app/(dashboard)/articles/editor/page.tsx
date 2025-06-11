@@ -65,11 +65,10 @@ interface Source {
 
 // Predefined categories that match the Discover navbar
 const PREDEFINED_CATEGORIES = [
-  { value: 'for-you', label: 'For You' },
   { value: 'trends', label: 'Trends' },
+  { value: 'for-you', label: 'For You' },
   { value: 'official', label: 'Official' },
   { value: 'rumor', label: 'Rumor' },
-  { value: 'theories', label: 'Theories' },
   { value: 'community', label: 'Community' },
 ];
 

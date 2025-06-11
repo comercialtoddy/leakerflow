@@ -43,11 +43,10 @@ const drawerVariants = {
 
 // Navigation links específicos para Discovery
 const DISCOVER_NAV_LINKS = [
-  { id: 1, name: 'For You', href: '#for-you' },
   { id: 2, name: 'Trends', href: '#trends' },
+  { id: 1, name: 'For You', href: '#for-you' },
   { id: 3, name: 'Official', href: '#official' },
   { id: 4, name: 'Rumor', href: '#rumor' },
-  { id: 5, name: 'Theories', href: '#theories' },
   { id: 6, name: 'Community', href: '#community' },
 ];
 
