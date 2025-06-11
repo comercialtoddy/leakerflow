@@ -195,7 +195,8 @@ export function useIncrementViews() {
       // Snapshot previous value
       const previousArticle = queryClient.getQueryData(articlesKeys.detail(id));
 
-      // Optimistically update views
+      // Optimistically update views only if user is authenticated
+      // Note: We'll optimistically update, but revert if the mutation indicates no view was counted
       queryClient.setQueryData(articlesKeys.detail(id), (old: any) => {
         if (old) {
           return {
@@ -209,16 +210,24 @@ export function useIncrementViews() {
 
       return { previousArticle, id };
     },
+    onSuccess: (wasViewCounted, variables, context) => {
+      // If the view wasn't counted (user already viewed or not authenticated), revert optimistic update
+      if (!wasViewCounted && context?.previousArticle) {
+        queryClient.setQueryData(articlesKeys.detail(context.id), context.previousArticle);
+      }
+    },
     onError: (err, variables, context) => {
       // Revert optimistic update on error
       if (context?.previousArticle) {
         queryClient.setQueryData(articlesKeys.detail(context.id), context.previousArticle);
       }
     },
-    onSettled: (_, __, variables) => {
-      // Refresh data
-      queryClient.invalidateQueries({ queryKey: articlesKeys.detail(variables.id) });
-      queryClient.invalidateQueries({ queryKey: articlesKeys.dashboardStats() });
+    onSettled: (wasViewCounted, __, variables) => {
+      // Only refresh data if a view was actually counted
+      if (wasViewCounted) {
+        queryClient.invalidateQueries({ queryKey: articlesKeys.detail(variables.id) });
+        queryClient.invalidateQueries({ queryKey: articlesKeys.dashboardStats() });
+      }
     },
   });
 }
@@ -335,49 +344,25 @@ export function useArticleSubscription() {
 // CONVENIENCE HOOKS
 // =======================
 
-// Hook to automatically track page views
+// Hook to automatically track page views (only for authenticated users)
 export function useAutoTrackView(articleId: string | null, enabled = true) {
-  const trackEvent = useTrackEvent();
+  const { mutate: incrementView } = useIncrementViews();
+  const hasTracked = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    if (articleId && enabled) {
-      const startTime = Date.now();
-      let scrollPercentage = 0;
-
-      // Track scroll percentage
-      const handleScroll = () => {
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const documentHeight = document.documentElement.scrollHeight - window.innerHeight;
-        scrollPercentage = Math.max(scrollPercentage, (scrollTop / documentHeight) * 100);
-      };
-
-      // Track view on mount
-      trackEvent.mutate({
-        articleId,
-        eventType: 'view',
-        options: { readTimeSeconds: 0, scrollPercentage: 0 }
-      });
-
-      window.addEventListener('scroll', handleScroll);
-
-      // Track detailed metrics on unmount
-      return () => {
-        window.removeEventListener('scroll', handleScroll);
-        
-        const readTime = Math.floor((Date.now() - startTime) / 1000);
-        if (readTime > 5) { // Only track if user spent more than 5 seconds
-          trackEvent.mutate({
-            articleId,
-            eventType: 'view',
-            options: { 
-              readTimeSeconds: readTime, 
-              scrollPercentage: Math.round(scrollPercentage)
-            }
-          });
-        }
-      };
+    if (articleId && enabled && hasTracked.current !== articleId) {
+      console.log('Attempting to track view for article:', articleId); // Debug log
+      incrementView({ id: articleId });
+      hasTracked.current = articleId;
     }
-  }, [articleId, enabled, trackEvent]);
+  }, [articleId, enabled, incrementView]);
+
+  // Reset tracking when component unmounts
+  React.useEffect(() => {
+    return () => {
+      hasTracked.current = null;
+    };
+  }, []);
 }
 
 // Hook for easy metrics tracking

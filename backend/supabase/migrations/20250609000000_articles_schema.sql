@@ -4,38 +4,6 @@
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create categories table for dynamic category management
-CREATE TABLE IF NOT EXISTS categories (
-  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-  name text NOT NULL UNIQUE,
-  slug text NOT NULL UNIQUE,
-  icon text NOT NULL DEFAULT '📝',
-  description text,
-  color text DEFAULT '#6366f1',
-  sort_order integer DEFAULT 0,
-  is_active boolean DEFAULT true,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE
-);
-
--- Create indexes for categories
-CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
-CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active);
-CREATE INDEX IF NOT EXISTS idx_categories_sort_order ON categories(sort_order);
-
--- Categories RLS
-ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Anyone can view active categories" ON categories
-    FOR SELECT USING (is_active = true);
-
-CREATE POLICY "Authenticated users can manage categories" ON categories
-    FOR ALL USING (auth.uid() = user_id);
-
-CREATE POLICY "Authenticated users can insert categories" ON categories
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
 -- Create articles table
 CREATE TABLE IF NOT EXISTS articles (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -161,19 +129,16 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-DROP TRIGGER IF EXISTS update_articles_updated_at ON articles;
 CREATE TRIGGER update_articles_updated_at 
     BEFORE UPDATE ON articles 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
-DROP TRIGGER IF EXISTS update_article_analytics_updated_at ON article_analytics;
 CREATE TRIGGER update_article_analytics_updated_at 
     BEFORE UPDATE ON article_analytics 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
-DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
 CREATE TRIGGER update_categories_updated_at 
     BEFORE UPDATE ON categories 
     FOR EACH ROW 
@@ -183,12 +148,6 @@ CREATE TRIGGER update_categories_updated_at
 ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE article_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE article_analytics ENABLE ROW LEVEL SECURITY;
-
--- Drop existing policies first
-DROP POLICY IF EXISTS "Users can view published articles or own articles" ON articles;
-DROP POLICY IF EXISTS "Users can insert own articles" ON articles;
-DROP POLICY IF EXISTS "Users can update own articles" ON articles;
-DROP POLICY IF EXISTS "Users can delete own articles" ON articles;
 
 -- Article policies
 CREATE POLICY "Users can view published articles or own articles" ON articles
@@ -233,12 +192,10 @@ CREATE POLICY "Users can view analytics for published articles or own articles" 
 -- METRICS FUNCTIONS
 -- =======================
 
--- Track article event
+-- Track article event (only for authenticated users)
 CREATE OR REPLACE FUNCTION track_article_event(
     p_article_id uuid,
     p_event_type text,
-    p_user_id uuid DEFAULT NULL,
-    p_session_id text DEFAULT NULL,
     p_read_time_seconds integer DEFAULT 0,
     p_scroll_percentage numeric DEFAULT 0,
     p_metadata jsonb DEFAULT '{}'
@@ -246,13 +203,37 @@ CREATE OR REPLACE FUNCTION track_article_event(
 RETURNS uuid AS $$
 DECLARE
     event_id uuid;
+    current_user_id uuid;
+    existing_view_count integer;
 BEGIN
+    -- Get current authenticated user
+    current_user_id := auth.uid();
+    
+    -- Only proceed if user is authenticated
+    IF current_user_id IS NULL THEN
+        RAISE EXCEPTION 'User must be authenticated to track events';
+    END IF;
+    
+    -- For view events, check if user already viewed this article
+    IF p_event_type = 'view' THEN
+        SELECT COUNT(*) INTO existing_view_count
+        FROM article_events 
+        WHERE article_id = p_article_id 
+          AND user_id = current_user_id 
+          AND event_type = 'view';
+        
+        -- If user already viewed this article, don't count it again
+        IF existing_view_count > 0 THEN
+            RETURN NULL; -- Return null to indicate no new event was created
+        END IF;
+    END IF;
+    
     -- Insert event
     INSERT INTO article_events (
-        article_id, user_id, session_id, event_type, 
+        article_id, user_id, event_type, 
         read_time_seconds, scroll_percentage, metadata
     ) VALUES (
-        p_article_id, p_user_id, p_session_id, p_event_type,
+        p_article_id, current_user_id, p_event_type,
         p_read_time_seconds, p_scroll_percentage, p_metadata
     ) RETURNING id INTO event_id;
     
@@ -275,10 +256,10 @@ DECLARE
     avg_read_time_val numeric;
     bounce_rate_val numeric;
 BEGIN
-    -- Calculate metrics from events
+    -- Calculate metrics from events (authenticated users only)
     SELECT 
-        COUNT(*) FILTER (WHERE event_type = 'view'),
-        COUNT(DISTINCT COALESCE(user_id, session_id)) FILTER (WHERE event_type = 'view'),
+        COUNT(DISTINCT user_id) FILTER (WHERE event_type = 'view'),
+        COUNT(DISTINCT user_id) FILTER (WHERE event_type = 'view'), -- total_views = unique_views for authenticated users
         COUNT(*) FILTER (WHERE event_type = 'share'),
         COUNT(*) FILTER (WHERE event_type = 'save'),
         COUNT(*) FILTER (WHERE event_type = 'comment'),
@@ -288,7 +269,8 @@ BEGIN
         total_views_count, unique_views_count, total_shares_count, 
         total_saves_count, total_comments_count, avg_read_time_val, bounce_rate_val
     FROM article_events 
-    WHERE article_id = p_article_id;
+    WHERE article_id = p_article_id
+      AND user_id IS NOT NULL; -- Only count authenticated users
     
     -- Update article with calculated metrics
     UPDATE articles SET
@@ -359,7 +341,7 @@ BEGIN
         article_id,
         p_date,
         COUNT(*) FILTER (WHERE event_type = 'view') as views,
-        COUNT(DISTINCT COALESCE(user_id, session_id)) FILTER (WHERE event_type = 'view') as unique_views,
+        COUNT(DISTINCT user_id) FILTER (WHERE event_type = 'view') as unique_views,
         COUNT(*) FILTER (WHERE event_type = 'share') as shares,
         COUNT(*) FILTER (WHERE event_type = 'save') as saves,
         COUNT(*) FILTER (WHERE event_type = 'comment') as comments,
@@ -370,6 +352,7 @@ BEGIN
         COUNT(*) FILTER (WHERE event_type = 'view' AND read_time_seconds < 10) * 100.0 / NULLIF(COUNT(*) FILTER (WHERE event_type = 'view'), 0) as bounce_rate
     FROM article_events
     WHERE DATE(created_at) = p_date
+      AND user_id IS NOT NULL -- Only count authenticated users
     GROUP BY article_id
     ON CONFLICT (article_id, date) 
     DO UPDATE SET
@@ -408,11 +391,30 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to increment article views
-CREATE OR REPLACE FUNCTION increment_article_views(article_id uuid)
-RETURNS void AS $$
+-- Function to increment article views (only for authenticated users)
+CREATE OR REPLACE FUNCTION increment_article_views(
+    p_article_id uuid,
+    p_read_time_seconds integer DEFAULT 0,
+    p_scroll_percentage numeric DEFAULT 0
+)
+RETURNS boolean AS $$
+DECLARE
+    event_result uuid;
 BEGIN
-    PERFORM track_article_event(article_id, 'view');
+    -- Track view event and return whether a new view was counted
+    SELECT track_article_event(
+        p_article_id,
+        'view',
+        p_read_time_seconds,
+        p_scroll_percentage
+    ) INTO event_result;
+    
+    -- Return true if a new view was counted, false if user already viewed
+    RETURN event_result IS NOT NULL;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- If user is not authenticated or any other error, return false
+        RETURN false;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -427,15 +429,16 @@ BEGIN
     WHERE id = article_id
     RETURNING bookmarked INTO new_bookmark_status;
     
-    -- Track bookmark event
-    PERFORM track_article_event(article_id, CASE WHEN new_bookmark_status THEN 'bookmark' ELSE 'unbookmark' END);
+    -- Track bookmark event only when an article is bookmarked
+    IF new_bookmark_status THEN
+      PERFORM track_article_event(article_id, 'bookmark');
+    END IF;
     
     RETURN new_bookmark_status;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Function to get articles with pagination
-DROP FUNCTION IF EXISTS get_articles_paginated(integer,integer,text,text);
 CREATE OR REPLACE FUNCTION get_articles_paginated(
     page_size integer DEFAULT 10,
     page_offset integer DEFAULT 0,
@@ -510,12 +513,6 @@ BEGIN
     OFFSET page_offset;
 END;
 $$ LANGUAGE plpgsql;
-
--- Insert default categories (no hardcoded categories - all dynamic)
-INSERT INTO categories (name, slug, icon, description, color, sort_order, user_id) 
-SELECT 'General', 'general', '📝', 'General articles and content', '#6366f1', 0, id
-FROM auth.users LIMIT 1
-ON CONFLICT (slug) DO NOTHING;
 
 -- Insert some sample data for testing (will be auto-cleaned after 1 week)
 INSERT INTO articles (
@@ -598,7 +595,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create triggers for real-time notifications
-DROP TRIGGER IF EXISTS article_changes_trigger ON articles;
 CREATE TRIGGER article_changes_trigger
     AFTER INSERT OR UPDATE OR DELETE ON articles
     FOR EACH ROW EXECUTE FUNCTION notify_article_changes();
@@ -617,6 +613,24 @@ GRANT ALL ON article_analytics TO postgres, service_role;
 GRANT SELECT ON article_analytics TO authenticated, anon;
 
 -- =======================
+-- FUNCTION PERMISSIONS
+-- =======================
+
+-- Grant execute permissions on the function to authenticated users only
+GRANT EXECUTE ON FUNCTION track_article_event(uuid, text, integer, numeric, jsonb) TO authenticated;
+
+-- Also grant permissions for increment_article_views to authenticated users only
+GRANT EXECUTE ON FUNCTION increment_article_views(uuid, integer, numeric) TO authenticated;
+
+-- Grant permissions for other article functions that might be used
+GRANT EXECUTE ON FUNCTION toggle_article_bookmark(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_article_metrics(uuid) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_article_analytics_summary(uuid, date, date) TO authenticated, anon;
+
+-- Ensure all existing functions have proper permissions
+GRANT EXECUTE ON FUNCTION get_articles_paginated(integer, integer, text, text) TO authenticated, anon;
+
+-- =======================
 -- STORAGE BUCKET SETUP
 -- =======================
 
@@ -624,13 +638,6 @@ GRANT SELECT ON article_analytics TO authenticated, anon;
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('articles-media', 'articles-media', true)
 ON CONFLICT (id) DO NOTHING;
-
--- Drop existing storage policies first
-DROP POLICY IF EXISTS "Authenticated users can upload files" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated users can view files" ON storage.objects;
-DROP POLICY IF EXISTS "Users can update their own files" ON storage.objects;
-DROP POLICY IF EXISTS "Users can delete their own files" ON storage.objects;
-DROP POLICY IF EXISTS "Public can view published files" ON storage.objects;
 
 -- Storage policies for articles-media bucket
 CREATE POLICY "Authenticated users can upload files" ON storage.objects

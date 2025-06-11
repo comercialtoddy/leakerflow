@@ -314,7 +314,7 @@ export class ArticlesService {
   // METRICS & ANALYTICS
   // =======================
 
-  // Track article events
+  // Track article events (only for authenticated users)
   async trackEvent(
     articleId: string, 
     eventType: 'view' | 'share' | 'save' | 'comment' | 'like' | 'bookmark',
@@ -326,13 +326,16 @@ export class ArticlesService {
   ) {
     try {
       const { data: user } = await this.supabase.auth.getUser();
-      const sessionId = !user.user ? this.generateSessionId() : undefined;
+      
+      // Only track events for authenticated users
+      if (!user.user) {
+        console.log('Skipping event tracking - user not authenticated');
+        return null;
+      }
 
       const { data, error } = await this.supabase.rpc('track_article_event', {
         p_article_id: articleId,
         p_event_type: eventType,
-        p_user_id: user.user?.id || null,
-        p_session_id: sessionId,
         p_read_time_seconds: options.readTimeSeconds || 0,
         p_scroll_percentage: options.scrollPercentage || 0,
         p_metadata: options.metadata || {}
@@ -341,11 +344,13 @@ export class ArticlesService {
       if (error) {
         console.error('Error tracking event:', error);
         // Don't throw here to avoid breaking user experience
+        return null;
       }
 
       return data;
     } catch (error) {
       console.error('Error tracking event:', error);
+      return null;
     }
   }
 
@@ -437,12 +442,34 @@ export class ArticlesService {
     }
   }
 
-  // Increment views (wrapper for trackEvent)
-  async incrementViews(id: string, readTime?: number, scrollPercentage?: number) {
-    return this.trackEvent(id, 'view', {
-      readTimeSeconds: readTime,
-      scrollPercentage: scrollPercentage
-    });
+  // Increment views (only for authenticated users, returns boolean indicating if view was counted)
+  async incrementViews(id: string, readTime?: number, scrollPercentage?: number): Promise<boolean> {
+    try {
+      const { data: user } = await this.supabase.auth.getUser();
+      
+      // Only track views for authenticated users
+      if (!user.user) {
+        console.log('Skipping view tracking - user not authenticated');
+        return false;
+      }
+
+      const { data, error } = await this.supabase.rpc('increment_article_views', {
+        p_article_id: id,
+        p_read_time_seconds: readTime || 0,
+        p_scroll_percentage: scrollPercentage || 0
+      });
+
+      if (error) {
+        console.error('Error incrementing views:', error);
+        return false;
+      }
+
+      // Return whether a new view was actually counted
+      return data === true;
+    } catch (error) {
+      console.error('Error incrementing views:', error);
+      return false;
+    }
   }
 
   // Toggle bookmark

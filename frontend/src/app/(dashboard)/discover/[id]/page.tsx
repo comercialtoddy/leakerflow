@@ -21,8 +21,8 @@ export default function ArticlePage() {
   const toggleBookmarkMutation = useToggleBookmark();
   const { trackShare } = useArticleMetrics(articleId);
   
-  // Auto-track views with scroll and read time
-  useAutoTrackView(articleId, !!article);
+  // Auto-track views when article is loaded
+  useAutoTrackView(articleId, !isLoading && !!article);
 
   const handleBookmarkToggle = async () => {
     if (article) {
