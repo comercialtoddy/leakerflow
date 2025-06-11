@@ -306,6 +306,38 @@ export function useSaveArticle() {
   });
 }
 
+// Vote on article
+export function useVoteOnArticle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ articleId, voteType }: { articleId: string; voteType: 'upvote' | 'downvote' }) => 
+      articlesService.voteOnArticle(articleId, voteType),
+    onSuccess: (voteResult, { articleId }) => {
+      // Update the article in the cache with the new vote data
+      queryClient.setQueryData(articlesKeys.detail(articleId), (old: any) => {
+        if (old) {
+          return {
+            ...old,
+            upvotes: voteResult.upvotes,
+            downvotes: voteResult.downvotes,
+            vote_score: voteResult.vote_score,
+            user_vote: voteResult.user_vote,
+          };
+        }
+        return old;
+      });
+
+      // Invalidate articles lists to refresh vote counts
+      queryClient.invalidateQueries({ queryKey: articlesKeys.lists() });
+    },
+    onError: (error: any) => {
+      console.error('Failed to vote on article:', error);
+      toast.error('Failed to vote on article');
+    },
+  });
+}
+
 // =======================
 // LEGACY SUPPORT
 // =======================

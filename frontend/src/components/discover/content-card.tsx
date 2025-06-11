@@ -6,13 +6,19 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ContentItem } from '@/types/discover';
 import { useRouter } from 'next/navigation';
+import { VotingButtons } from './voting-buttons';
 
 interface ContentCardProps {
   content: ContentItem;
   onBookmarkToggle: () => void;
+  onVote?: (voteType: 'upvote' | 'downvote') => void;
 }
 
-export const ContentCard = React.memo(function ContentCard({ content, onBookmarkToggle }: ContentCardProps) {
+export const ContentCard = React.memo(function ContentCard({ 
+  content, 
+  onBookmarkToggle, 
+  onVote 
+}: ContentCardProps) {
   const router = useRouter();
   const timeAgo = formatDistanceToNow(new Date(content.publishedAt), { addSuffix: true });
 
@@ -23,6 +29,10 @@ export const ContentCard = React.memo(function ContentCard({ content, onBookmark
   const handleBookmarkClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onBookmarkToggle();
+  };
+
+  const handleVote = (voteType: 'upvote' | 'downvote') => {
+    onVote?.(voteType);
   };
 
   return (
@@ -69,6 +79,20 @@ export const ContentCard = React.memo(function ContentCard({ content, onBookmark
               </span>
             </Button>
           </div>
+
+          {/* Voting buttons - positioned in bottom right */}
+          {onVote && (
+            <div className="absolute bottom-2 right-2">
+              <VotingButtons
+                upvotes={content.upvotes || 0}
+                downvotes={content.downvotes || 0}
+                userVote={content.user_vote || null}
+                onVote={handleVote}
+                size="sm"
+                variant="card"
+              />
+            </div>
+          )}
         </div>
 
         {/* Content area - flexible to fill remaining space */}

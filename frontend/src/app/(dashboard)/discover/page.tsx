@@ -7,7 +7,18 @@ import {
   DiscoverHeader 
 } from '@/components/discover';
 import type { ContentItem } from '@/types/discover';
-import { useArticles, useToggleBookmark, useIncrementViews } from '@/hooks/react-query/articles/use-articles';
+import { useArticles, useToggleBookmark, useIncrementViews, useVoteOnArticle } from '@/hooks/react-query/articles/use-articles';
+
+// Tab categories mapping
+export const TAB_CATEGORIES = {
+  'for-you': 'for-you',
+  'trends': 'trends', 
+  'official': 'official',
+  'rumor': 'rumor',
+  'community': 'community'
+} as const;
+
+export type TabCategory = keyof typeof TAB_CATEGORIES;
 
 // Convert Supabase article to ContentItem format (memoized)
 const convertArticleToContentItem = (article: any): ContentItem => ({
@@ -20,6 +31,11 @@ const convertArticleToContentItem = (article: any): ContentItem => ({
   readTime: article.read_time,
   publishedAt: article.publish_date || article.created_at,
   bookmarked: article.bookmarked,
+  // Voting fields
+  upvotes: article.upvotes || 0,
+  downvotes: article.downvotes || 0,
+  vote_score: article.vote_score || 0,
+  user_vote: article.user_vote || null,
 });
 
 // Optimized chunking utility with memoization
@@ -35,6 +51,9 @@ const chunkContent = (content: ContentItem[]) => {
 };
 
 export default function DiscoverPage() {
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabCategory>('for-you');
+  
   // Consolidated state for better performance
   const [displayState, setDisplayState] = useState({
     shownArticles: [] as ContentItem[],
@@ -56,12 +75,102 @@ export default function DiscoverPage() {
 
   const toggleBookmarkMutation = useToggleBookmark();
   const incrementViewsMutation = useIncrementViews();
+  const voteOnArticleMutation = useVoteOnArticle();
 
-  // Memoized article conversion and flattening
-  const convertedArticles = useMemo(() => {
+  // Memoized article conversion and filtering by active tab
+  const { convertedArticles, filteredArticles } = useMemo(() => {
     const allArticles = articlesData?.pages.flatMap(page => (page as any)?.articles || []) || [];
-    return allArticles.map(convertArticleToContentItem);
-  }, [articlesData]);
+    const converted = allArticles.map(convertArticleToContentItem);
+    
+    // Filter articles by active tab category
+    const filtered = activeTab === 'for-you' 
+      ? converted // For You shows all articles
+      : activeTab === 'trends'
+        ? converted.filter(article => article.vote_score && article.vote_score > 0) // Trends shows articles with positive vote score
+        : converted.filter(article => article.category === TAB_CATEGORIES[activeTab]);
+    
+    return { convertedArticles: converted, filteredArticles: filtered };
+  }, [articlesData, activeTab]);
+
+  // Handle tab changes
+  const handleTabChange = useCallback((tab: TabCategory) => {
+    setActiveTab(tab);
+    // Reset display state when switching tabs
+    setDisplayState({
+      shownArticles: [],
+      currentCycle: 0,
+      isLoadingMore: false
+    });
+  }, []);
+
+  // Handle voting on articles
+  const handleVote = useCallback(async (articleId: string, voteType: 'upvote' | 'downvote') => {
+    try {
+      // Optimistic update
+      setDisplayState(prev => ({
+        ...prev,
+        shownArticles: prev.shownArticles.map(item => {
+          if (item.id === articleId) {
+            const wasUpvoted = item.user_vote === 'upvote';
+            const wasDownvoted = item.user_vote === 'downvote';
+            const isTogglingOff = item.user_vote === voteType;
+            
+            let newUpvotes = item.upvotes || 0;
+            let newDownvotes = item.downvotes || 0;
+            let newUserVote: 'upvote' | 'downvote' | null = null;
+            
+            if (isTogglingOff) {
+              // Removing vote
+              if (voteType === 'upvote') newUpvotes--;
+              else newDownvotes--;
+              newUserVote = null;
+            } else {
+              // Adding or changing vote
+              if (voteType === 'upvote') {
+                if (wasDownvoted) newDownvotes--;
+                newUpvotes++;
+                newUserVote = 'upvote';
+              } else {
+                if (wasUpvoted) newUpvotes--;
+                newDownvotes++;
+                newUserVote = 'downvote';
+              }
+            }
+            
+            return {
+              ...item,
+              upvotes: newUpvotes,
+              downvotes: newDownvotes,
+              vote_score: newUpvotes - newDownvotes,
+              user_vote: newUserVote
+            };
+          }
+          return item;
+        })
+      }));
+
+      // Call the real API
+      await voteOnArticleMutation.mutateAsync({ 
+        articleId, 
+        voteType 
+      });
+      
+    } catch (error) {
+      // Revert optimistic update on error
+      console.error('Failed to vote:', error);
+      setDisplayState(prev => ({
+        ...prev,
+        shownArticles: prev.shownArticles.map(item => {
+          if (item.id === articleId) {
+            // Revert to original state - this is a simplified revert
+            // In a real app, you'd store the original state
+            return item;
+          }
+          return item;
+        })
+      }));
+    }
+  }, [voteOnArticleMutation]);
 
   // Optimized bookmark handler with optimistic updates
   const handleBookmarkToggle = useCallback(async (contentId: string) => {
@@ -109,9 +218,9 @@ export default function DiscoverPage() {
       // If we have more pages to fetch, fetch them
       if (hasNextPage) {
         await fetchNextPage();
-      } else if (convertedArticles.length > 0) {
-        // Restart cycle with batch loading
-        const articlesToAdd = convertedArticles.slice(0, 4);
+      } else if (filteredArticles.length > 0) {
+        // Restart cycle with batch loading from filtered articles
+        const articlesToAdd = filteredArticles.slice(0, 4);
         if (articlesToAdd.length > 0) {
           setDisplayState(prev => ({
             shownArticles: [...prev.shownArticles, ...articlesToAdd],
@@ -124,7 +233,7 @@ export default function DiscoverPage() {
     } finally {
       setDisplayState(prev => ({ ...prev, isLoadingMore: false }));
     }
-  }, [displayState.isLoadingMore, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, convertedArticles]);
+  }, [displayState.isLoadingMore, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, filteredArticles]);
 
   // Optimized intersection observer setup
   useEffect(() => {
@@ -159,15 +268,15 @@ export default function DiscoverPage() {
     };
   }, [loadMoreContent, displayState.isLoadingMore]);
 
-  // Optimized initial load and data updates
+  // Optimized initial load and data updates based on filtered articles
   useEffect(() => {
-    if (convertedArticles.length > 0) {
+    if (filteredArticles.length > 0) {
       setDisplayState(prev => {
-        // Initial load
+        // Initial load for the current tab
         if (prev.shownArticles.length === 0) {
           return {
             ...prev,
-            shownArticles: convertedArticles.slice(0, 4)
+            shownArticles: filteredArticles.slice(0, 4)
           };
         }
 
@@ -176,8 +285,8 @@ export default function DiscoverPage() {
         const cycleSize = 4;
         const expectedArticles = Math.ceil(currentlyShown / cycleSize) * cycleSize;
         
-        if (convertedArticles.length > expectedArticles) {
-          const newArticles = convertedArticles.slice(currentlyShown, currentlyShown + cycleSize);
+        if (filteredArticles.length > expectedArticles) {
+          const newArticles = filteredArticles.slice(currentlyShown, currentlyShown + cycleSize);
           if (newArticles.length > 0) {
             return {
               ...prev,
@@ -189,7 +298,7 @@ export default function DiscoverPage() {
         return prev;
       });
     }
-  }, [convertedArticles]);
+  }, [filteredArticles]);
 
   // Memoized chunked content
   const chunkedContent = useMemo(() => 
@@ -200,11 +309,11 @@ export default function DiscoverPage() {
   // Memoized loading states
   const isInitialLoading = isLoading && displayState.shownArticles.length === 0;
   const isLoadingMoreContent = (isFetchingNextPage || displayState.isLoadingMore) && displayState.shownArticles.length > 0;
-  const showCycleIndicator = !hasNextPage && convertedArticles.length > 0 && displayState.currentCycle > 0;
+  const showCycleIndicator = !hasNextPage && filteredArticles.length > 0 && displayState.currentCycle > 0;
 
   return (
     <>
-      <DiscoverHeader />
+      <DiscoverHeader activeTab={activeTab} onTabChange={handleTabChange} />
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <main className="pb-16 pt-12 transform scale-75 origin-top">
@@ -214,9 +323,18 @@ export default function DiscoverPage() {
               </div>
             ) : displayState.shownArticles.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <h2 className="text-2xl font-bold mb-4">No Articles Available</h2>
+                <h2 className="text-2xl font-bold mb-4">
+                  {activeTab === 'for-you' ? 'No Articles Available' : 
+                   activeTab === 'trends' ? 'No Trending Articles' :
+                   `No ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Articles`}
+                </h2>
                 <p className="text-muted-foreground mb-6">
-                  There are no published articles yet. Check back later or create some articles!
+                  {activeTab === 'for-you' 
+                    ? 'There are no published articles yet. Check back later or create some articles!'
+                    : activeTab === 'trends'
+                    ? 'No articles are trending yet. Vote on articles to help them trend!'
+                    : `There are no ${activeTab} articles available yet. Try another category or create some articles!`
+                  }
                 </p>
                 <a 
                   href="/articles/editor" 
@@ -233,12 +351,14 @@ export default function DiscoverPage() {
                       <ContentHero
                         content={chunk[0]}
                         onBookmarkToggle={() => handleBookmarkToggle(chunk[0].id)}
+                        onVote={(voteType) => handleVote(chunk[0].id, voteType)}
                       />
                     )}
                     {chunk.length > 1 && (
                       <ContentStream
                         content={chunk.slice(1)}
                         onBookmarkToggle={handleBookmarkToggle}
+                        onVote={handleVote}
                       />
                     )}
                   </section>

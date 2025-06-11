@@ -26,6 +26,13 @@ CREATE TABLE IF NOT EXISTS articles (
   engagement numeric(5,2) DEFAULT 0,
   bookmarked boolean DEFAULT false,
   
+  -- Voting system (Reddit-style)
+  upvotes integer DEFAULT 0,
+  downvotes integer DEFAULT 0,
+  vote_score integer DEFAULT 0, -- upvotes - downvotes
+  trend_score numeric(10,2) DEFAULT 0, -- calculated trend score for Trends section
+  is_trending boolean DEFAULT false, -- flag for articles that qualify for Trends
+  
   -- Advanced metrics (calculated from events)
   total_views integer DEFAULT 0,
   unique_views integer DEFAULT 0,
@@ -66,6 +73,23 @@ BEGIN
 END $$;
 
 -- =======================
+-- VOTING SYSTEM TABLES
+-- =======================
+
+-- Article votes tracking (one vote per user per article)
+CREATE TABLE IF NOT EXISTS article_votes (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  article_id uuid REFERENCES articles(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  vote_type text NOT NULL CHECK (vote_type IN ('upvote', 'downvote')),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  
+  -- Unique constraint: one vote per user per article
+  UNIQUE(article_id, user_id)
+);
+
+-- =======================
 -- METRICS TRACKING TABLES
 -- =======================
 
@@ -75,7 +99,7 @@ CREATE TABLE IF NOT EXISTS article_events (
   article_id uuid REFERENCES articles(id) ON DELETE CASCADE,
   user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   session_id text, -- For anonymous tracking
-  event_type text NOT NULL CHECK (event_type IN ('view', 'share', 'save', 'comment', 'like', 'bookmark')),
+  event_type text NOT NULL CHECK (event_type IN ('view', 'share', 'save', 'comment', 'like', 'bookmark', 'upvote', 'downvote')),
   
   -- Event metadata
   user_agent text,
@@ -107,6 +131,8 @@ CREATE TABLE IF NOT EXISTS article_analytics (
   comments integer DEFAULT 0,
   likes integer DEFAULT 0,
   bookmarks integer DEFAULT 0,
+  upvotes integer DEFAULT 0,
+  downvotes integer DEFAULT 0,
   
   -- Engagement metrics
   avg_read_time numeric(8,2) DEFAULT 0,
@@ -127,6 +153,15 @@ CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category);
 CREATE INDEX IF NOT EXISTS idx_articles_created_at ON articles(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_articles_user_id ON articles(user_id);
 CREATE INDEX IF NOT EXISTS idx_articles_publish_date ON articles(publish_date DESC);
+CREATE INDEX IF NOT EXISTS idx_articles_trend_score ON articles(trend_score DESC);
+CREATE INDEX IF NOT EXISTS idx_articles_is_trending ON articles(is_trending);
+CREATE INDEX IF NOT EXISTS idx_articles_vote_score ON articles(vote_score DESC);
+
+-- Voting table indexes
+CREATE INDEX IF NOT EXISTS idx_article_votes_article_id ON article_votes(article_id);
+CREATE INDEX IF NOT EXISTS idx_article_votes_user_id ON article_votes(user_id);
+CREATE INDEX IF NOT EXISTS idx_article_votes_vote_type ON article_votes(vote_type);
+CREATE INDEX IF NOT EXISTS idx_article_votes_created_at ON article_votes(created_at DESC);
 
 -- Metrics table indexes
 CREATE INDEX IF NOT EXISTS idx_article_events_article_id ON article_events(article_id);
@@ -152,6 +187,11 @@ CREATE TRIGGER update_articles_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_article_votes_updated_at 
+    BEFORE UPDATE ON article_votes 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_article_analytics_updated_at 
     BEFORE UPDATE ON article_analytics 
     FOR EACH ROW 
@@ -161,6 +201,7 @@ CREATE TRIGGER update_article_analytics_updated_at
 
 -- Row Level Security (RLS)
 ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE article_votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE article_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE article_analytics ENABLE ROW LEVEL SECURITY;
 
@@ -178,6 +219,19 @@ CREATE POLICY "Users can update own articles" ON articles
     FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own articles" ON articles
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Voting policies
+CREATE POLICY "Users can view all votes" ON article_votes
+    FOR SELECT USING (true);
+
+CREATE POLICY "Users can insert their own votes" ON article_votes
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own votes" ON article_votes
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own votes" ON article_votes
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Events policies
@@ -202,6 +256,163 @@ CREATE POLICY "Users can view analytics for published articles or own articles" 
             AND (a.status = 'published' OR a.user_id = auth.uid())
         )
     );
+
+-- =======================
+-- VOTING FUNCTIONS
+-- =======================
+
+-- Vote on article (upvote or downvote)
+CREATE OR REPLACE FUNCTION vote_on_article(
+    p_article_id uuid,
+    p_vote_type text
+)
+RETURNS jsonb AS $$
+DECLARE
+    current_user_id uuid;
+    existing_vote text;
+    new_upvotes integer;
+    new_downvotes integer;
+    new_vote_score integer;
+    result jsonb;
+BEGIN
+    -- Get current authenticated user
+    current_user_id := auth.uid();
+    
+    -- Only proceed if user is authenticated
+    IF current_user_id IS NULL THEN
+        RAISE EXCEPTION 'User must be authenticated to vote';
+    END IF;
+    
+    -- Validate vote type
+    IF p_vote_type NOT IN ('upvote', 'downvote') THEN
+        RAISE EXCEPTION 'Invalid vote type. Must be upvote or downvote';
+    END IF;
+    
+    -- Check if user already voted on this article
+    SELECT vote_type INTO existing_vote
+    FROM article_votes 
+    WHERE article_id = p_article_id AND user_id = current_user_id;
+    
+    -- Handle vote logic
+    IF existing_vote IS NULL THEN
+        -- New vote
+        INSERT INTO article_votes (article_id, user_id, vote_type)
+        VALUES (p_article_id, current_user_id, p_vote_type);
+        
+        -- Track event
+        PERFORM track_article_event(p_article_id, p_vote_type);
+        
+    ELSIF existing_vote = p_vote_type THEN
+        -- Remove vote (user clicked same vote again)
+        DELETE FROM article_votes 
+        WHERE article_id = p_article_id AND user_id = current_user_id;
+        
+    ELSE
+        -- Change vote
+        UPDATE article_votes 
+        SET vote_type = p_vote_type, updated_at = now()
+        WHERE article_id = p_article_id AND user_id = current_user_id;
+        
+        -- Track event
+        PERFORM track_article_event(p_article_id, p_vote_type);
+    END IF;
+    
+    -- Recalculate vote counts
+    SELECT 
+        COUNT(*) FILTER (WHERE vote_type = 'upvote'),
+        COUNT(*) FILTER (WHERE vote_type = 'downvote')
+    INTO new_upvotes, new_downvotes
+    FROM article_votes 
+    WHERE article_id = p_article_id;
+    
+    new_vote_score := new_upvotes - new_downvotes;
+    
+    -- Update article vote counts and recalculate trend score
+    UPDATE articles SET
+        upvotes = new_upvotes,
+        downvotes = new_downvotes,
+        vote_score = new_vote_score
+    WHERE id = p_article_id;
+    
+    -- Recalculate trend score
+    PERFORM calculate_trend_scores();
+    
+    -- Get updated user vote status
+    SELECT vote_type INTO existing_vote
+    FROM article_votes 
+    WHERE article_id = p_article_id AND user_id = current_user_id;
+    
+    -- Return result
+    result := jsonb_build_object(
+        'upvotes', new_upvotes,
+        'downvotes', new_downvotes,
+        'vote_score', new_vote_score,
+        'user_vote', existing_vote
+    );
+    
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Calculate trend scores for all articles (Reddit-style algorithm)
+CREATE OR REPLACE FUNCTION calculate_trend_scores()
+RETURNS void AS $$
+DECLARE
+    article_record RECORD;
+    hours_since_publish numeric;
+    trend_score_val numeric;
+    log_score numeric;
+    time_decay numeric;
+BEGIN
+    FOR article_record IN 
+        SELECT id, upvotes, downvotes, vote_score, created_at, publish_date
+        FROM articles 
+        WHERE status = 'published'
+    LOOP
+        -- Calculate hours since publish (use publish_date if available, otherwise created_at)
+        hours_since_publish := EXTRACT(EPOCH FROM (now() - COALESCE(article_record.publish_date, article_record.created_at))) / 3600.0;
+        
+        -- Avoid log of zero or negative numbers
+        IF article_record.vote_score <= 0 THEN
+            log_score := 0;
+        ELSE
+            log_score := LOG(article_record.vote_score + 1);
+        END IF;
+        
+        -- Time decay (articles lose trending power over time)
+        -- More aggressive decay: articles older than 24 hours start losing significant score
+        time_decay := GREATEST(0.1, 1.0 / (1.0 + hours_since_publish / 12.0));
+        
+        -- Reddit-style trending algorithm
+        -- Higher vote score + recency bias
+        trend_score_val := (log_score * time_decay) + (article_record.upvotes * 0.1 * time_decay);
+        
+        -- Update article with new trend score
+        UPDATE articles SET
+            trend_score = trend_score_val,
+            is_trending = (trend_score_val > 1.0 AND article_record.vote_score > 0) -- Threshold for trending
+        WHERE id = article_record.id;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Get user's vote status for an article
+CREATE OR REPLACE FUNCTION get_user_vote(p_article_id uuid)
+RETURNS text AS $$
+DECLARE
+    user_vote text;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RETURN NULL;
+    END IF;
+    
+    SELECT vote_type INTO user_vote
+    FROM article_votes 
+    WHERE article_id = p_article_id AND user_id = auth.uid();
+    
+    RETURN user_vote;
+END;
+$$ LANGUAGE plpgsql;
 
 -- =======================
 -- METRICS FUNCTIONS
@@ -350,7 +561,7 @@ RETURNS void AS $$
 BEGIN
     INSERT INTO article_analytics (
         article_id, date, views, unique_views, shares, saves, 
-        comments, likes, bookmarks, avg_read_time, avg_scroll_percentage, bounce_rate
+        comments, likes, bookmarks, upvotes, downvotes, avg_read_time, avg_scroll_percentage, bounce_rate
     )
     SELECT 
         article_id,
@@ -362,6 +573,8 @@ BEGIN
         COUNT(*) FILTER (WHERE event_type = 'comment') as comments,
         COUNT(*) FILTER (WHERE event_type = 'like') as likes,
         COUNT(*) FILTER (WHERE event_type = 'bookmark') as bookmarks,
+        COUNT(*) FILTER (WHERE event_type = 'upvote') as upvotes,
+        COUNT(*) FILTER (WHERE event_type = 'downvote') as downvotes,
         AVG(read_time_seconds) FILTER (WHERE event_type = 'view' AND read_time_seconds > 0) as avg_read_time,
         AVG(scroll_percentage) FILTER (WHERE event_type = 'view' AND scroll_percentage > 0) as avg_scroll_percentage,
         COUNT(*) FILTER (WHERE event_type = 'view' AND read_time_seconds < 10) * 100.0 / NULLIF(COUNT(*) FILTER (WHERE event_type = 'view'), 0) as bounce_rate
@@ -378,6 +591,8 @@ BEGIN
         comments = EXCLUDED.comments,
         likes = EXCLUDED.likes,
         bookmarks = EXCLUDED.bookmarks,
+        upvotes = EXCLUDED.upvotes,
+        downvotes = EXCLUDED.downvotes,
         avg_read_time = EXCLUDED.avg_read_time,
         avg_scroll_percentage = EXCLUDED.avg_scroll_percentage,
         bounce_rate = EXCLUDED.bounce_rate,
@@ -400,6 +615,10 @@ BEGIN
     -- Cleanup old analytics (keep 90 days)
     DELETE FROM article_analytics 
     WHERE date < CURRENT_DATE - interval '90 days';
+    
+    -- Cleanup old votes (keep 90 days)
+    DELETE FROM article_votes 
+    WHERE created_at < now() - interval '90 days';
     
     -- Log cleanup
     RAISE NOTICE 'Cleaned up old articles and metrics at %', now();
@@ -453,7 +672,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to get articles with pagination
+-- Function to get articles with pagination (updated to support trending)
 CREATE OR REPLACE FUNCTION get_articles_paginated(
     page_size integer DEFAULT 10,
     page_offset integer DEFAULT 0,
@@ -476,6 +695,12 @@ RETURNS TABLE (
     views integer,
     engagement numeric,
     bookmarked boolean,
+    upvotes integer,
+    downvotes integer,
+    vote_score integer,
+    trend_score numeric,
+    is_trending boolean,
+    user_vote text,
     total_views integer,
     unique_views integer,
     total_shares integer,
@@ -506,6 +731,12 @@ BEGIN
         a.views,
         a.engagement,
         a.bookmarked,
+        a.upvotes,
+        a.downvotes,
+        a.vote_score,
+        a.trend_score,
+        a.is_trending,
+        get_user_vote(a.id) as user_vote,
         a.total_views,
         a.unique_views,
         a.total_shares,
@@ -520,10 +751,16 @@ BEGIN
     FROM articles a
     WHERE 
         (filter_status IS NULL OR a.status = filter_status) AND
-        (filter_category IS NULL OR a.category = filter_category) AND
+        (filter_category IS NULL OR 
+         (filter_category = 'trends' AND a.is_trending = true) OR
+         (filter_category != 'trends' AND a.category = filter_category)
+        ) AND
         (a.status = 'published' OR a.user_id = auth.uid())
     ORDER BY 
-        CASE WHEN a.status = 'published' THEN a.publish_date ELSE a.created_at END DESC
+        CASE 
+            WHEN filter_category = 'trends' THEN a.trend_score
+            ELSE EXTRACT(EPOCH FROM COALESCE(a.publish_date, a.created_at))
+        END DESC
     LIMIT page_size
     OFFSET page_offset;
 END;
@@ -542,6 +779,9 @@ INSERT INTO articles (
     image_url,
     views,
     engagement,
+    upvotes,
+    downvotes,
+    vote_score,
     user_id
 ) VALUES 
 (
@@ -556,6 +796,9 @@ INSERT INTO articles (
     '/api/placeholder/800/400',
     1250,
     92.5,
+    15,
+    2,
+    13,
     (SELECT id FROM auth.users LIMIT 1)
 );
 
@@ -568,6 +811,18 @@ BEGIN
         AND tablename = 'articles'
     ) THEN
         ALTER publication supabase_realtime ADD TABLE articles;
+    END IF;
+END $$;
+
+-- Enable real-time for voting tables
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND tablename = 'article_votes'
+    ) THEN
+        ALTER publication supabase_realtime ADD TABLE article_votes;
     END IF;
 END $$;
 
@@ -620,6 +875,10 @@ GRANT ALL ON articles TO postgres, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON articles TO authenticated;
 GRANT SELECT ON articles TO anon; 
 
+-- Voting tables permissions
+GRANT ALL ON article_votes TO postgres, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON article_votes TO authenticated;
+
 -- Metrics tables permissions
 GRANT ALL ON article_events TO postgres, service_role;
 GRANT SELECT, INSERT ON article_events TO authenticated, anon;
@@ -630,6 +889,11 @@ GRANT SELECT ON article_analytics TO authenticated, anon;
 -- =======================
 -- FUNCTION PERMISSIONS
 -- =======================
+
+-- Grant execute permissions on voting functions
+GRANT EXECUTE ON FUNCTION vote_on_article(uuid, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_user_vote(uuid) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION calculate_trend_scores() TO authenticated, service_role;
 
 -- Grant execute permissions on the function to authenticated users only
 GRANT EXECUTE ON FUNCTION track_article_event(uuid, text, integer, numeric, jsonb) TO authenticated;

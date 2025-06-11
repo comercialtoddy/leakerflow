@@ -296,33 +296,34 @@ export class ArticlesService {
       const { page, pageSize } = pagination;
       const offset = (page - 1) * pageSize;
 
-      let query = this.supabase
-        .from('articles')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(offset, offset + pageSize - 1);
-
-      // Apply filters
-      if (filters.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
-      }
-
-      if (filters.category && filters.category !== 'all') {
-        query = query.eq('category', filters.category);
-      }
-
-      if (filters.search) {
-        query = query.or(`title.ilike.%${filters.search}%,subtitle.ilike.%${filters.search}%`);
-      }
-
-      const { data, error, count } = await query;
+      // Use the database function that includes voting fields and user vote status
+      const { data, error } = await this.supabase.rpc('get_articles_paginated', {
+        page_size: pageSize,
+        page_offset: offset,
+        filter_status: filters.status === 'all' ? null : (filters.status || 'published'),
+        filter_category: filters.category === 'all' ? null : filters.category
+      });
 
       if (error) throw error;
 
+      // If we have search filters, we need to apply them post-query
+      // since the function doesn't support search yet
+      let articles = data || [];
+      
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        articles = articles.filter((article: any) => 
+          article.title?.toLowerCase().includes(searchLower) ||
+          article.subtitle?.toLowerCase().includes(searchLower)
+        );
+      }
+
+      const totalCount = articles.length > 0 ? articles[0].total_count : 0;
+
       return {
-        articles: data || [],
-        totalCount: count || 0,
-        hasMore: (offset + pageSize) < (count || 0),
+        articles,
+        totalCount,
+        hasMore: (offset + pageSize) < totalCount,
       };
     } catch (error) {
       console.error('Error fetching articles:', error);
@@ -332,30 +333,59 @@ export class ArticlesService {
 
   async getArticleById(id: string) {
     try {
-      const { data, error } = await this.supabase
-        .from('articles')
-        .select('*')
-        .eq('id', id)
-        .single();
+      // First get the article with all fields including voting data
+      const { data, error } = await this.supabase.rpc('get_articles_paginated', {
+        page_size: 1,
+        page_offset: 0,
+        filter_status: null, // Get any status if user owns it
+        filter_category: null
+      });
 
       if (error) throw error;
+
+      // Find the specific article by ID
+      const article = data?.find((a: any) => a.id === id);
       
-      // If content is stored in storage, retrieve it
-      if (data?.content?.startsWith('[STORED_IN_STORAGE:')) {
-        const storagePath = data.content.replace('[STORED_IN_STORAGE:', '').replace(']', '');
-        try {
-          data.content = await this.getContentFromStorage(storagePath);
-        } catch (storageError) {
-          console.error('Error retrieving content from storage:', storageError);
-          data.content = '[Content temporarily unavailable - stored content could not be retrieved]';
+      if (!article) {
+        // Fallback to direct query if not found in paginated results
+        const { data: fallbackData, error: fallbackError } = await this.supabase
+          .from('articles')
+          .select('*, upvotes, downvotes, vote_score, trend_score, is_trending')
+          .eq('id', id)
+          .single();
+
+        if (fallbackError) throw fallbackError;
+        
+        // Get user vote separately for fallback
+        if (fallbackData) {
+          fallbackData.user_vote = await this.getUserVote(id);
         }
+        
+        return this.processArticleContent(fallbackData);
       }
-      
-      return data;
+
+      return this.processArticleContent(article);
     } catch (error) {
       console.error('Error fetching article:', error);
       throw error;
     }
+  }
+
+  private async processArticleContent(data: any) {
+    if (!data) return null;
+    
+    // If content is stored in storage, retrieve it
+    if (data?.content?.startsWith('[STORED_IN_STORAGE:')) {
+      const storagePath = data.content.replace('[STORED_IN_STORAGE:', '').replace(']', '');
+      try {
+        data.content = await this.getContentFromStorage(storagePath);
+      } catch (storageError) {
+        console.error('Error retrieving content from storage:', storageError);
+        data.content = '[Content temporarily unavailable - stored content could not be retrieved]';
+      }
+    }
+    
+    return data;
   }
 
   async createArticle(articleData: CreateArticleData) {
@@ -512,10 +542,62 @@ export class ArticlesService {
   // METRICS & ANALYTICS
   // =======================
 
+  // Vote on article (upvote or downvote)
+  async voteOnArticle(articleId: string, voteType: 'upvote' | 'downvote') {
+    try {
+      const { data: user } = await this.supabase.auth.getUser();
+      
+      // Only authenticated users can vote
+      if (!user.user) {
+        throw new Error('User must be authenticated to vote');
+      }
+
+      const { data, error } = await this.supabase.rpc('vote_on_article', {
+        p_article_id: articleId,
+        p_vote_type: voteType
+      });
+
+      if (error) {
+        console.error('Error voting on article:', error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error voting on article:', error);
+      throw error;
+    }
+  }
+
+  // Get user's vote status for an article
+  async getUserVote(articleId: string): Promise<string | null> {
+    try {
+      const { data: user } = await this.supabase.auth.getUser();
+      
+      if (!user.user) {
+        return null;
+      }
+
+      const { data, error } = await this.supabase.rpc('get_user_vote', {
+        p_article_id: articleId
+      });
+
+      if (error) {
+        console.error('Error getting user vote:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error getting user vote:', error);
+      return null;
+    }
+  }
+
   // Track article events (only for authenticated users)
   async trackEvent(
     articleId: string, 
-    eventType: 'view' | 'share' | 'save' | 'comment' | 'like' | 'bookmark',
+    eventType: 'view' | 'share' | 'save' | 'comment' | 'like' | 'bookmark' | 'upvote' | 'downvote',
     options: {
       readTimeSeconds?: number;
       scrollPercentage?: number;

@@ -6,13 +6,19 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ContentItem } from '@/types/discover';
 import { useRouter } from 'next/navigation';
+import { VotingButtons } from './voting-buttons';
 
 interface ContentHeroProps {
   content: ContentItem;
   onBookmarkToggle: () => void;
+  onVote?: (voteType: 'upvote' | 'downvote') => void;
 }
 
-export const ContentHero = React.memo(function ContentHero({ content, onBookmarkToggle }: ContentHeroProps) {
+export const ContentHero = React.memo(function ContentHero({ 
+  content, 
+  onBookmarkToggle, 
+  onVote 
+}: ContentHeroProps) {
   const router = useRouter();
   const timeAgo = formatDistanceToNow(new Date(content.publishedAt), { addSuffix: true });
 
@@ -28,6 +34,10 @@ export const ContentHero = React.memo(function ContentHero({ content, onBookmark
   const handleReadMoreClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     router.push(`/discover/${content.id}`);
+  };
+
+  const handleVote = (voteType: 'upvote' | 'downvote') => {
+    onVote?.(voteType);
   };
 
   return (
@@ -74,6 +84,20 @@ export const ContentHero = React.memo(function ContentHero({ content, onBookmark
               </span>
             </Button>
           </div>
+
+          {/* Voting buttons - positioned in bottom right */}
+          {onVote && (
+            <div className="absolute bottom-2 right-2">
+              <VotingButtons
+                upvotes={content.upvotes || 0}
+                downvotes={content.downvotes || 0}
+                userVote={content.user_vote || null}
+                onVote={handleVote}
+                size="sm"
+                variant="card"
+              />
+            </div>
+          )}
         </div>
 
         {/* Content area */}
