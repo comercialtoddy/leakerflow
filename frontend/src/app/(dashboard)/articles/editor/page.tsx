@@ -45,6 +45,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 
@@ -89,6 +97,7 @@ export default function ArticleEditor() {
   const [author, setAuthor] = useState('');
   const [status, setStatus] = useState<'draft' | 'published' | 'scheduled'>('draft');
   const [publishDate, setPublishDate] = useState('');
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
@@ -285,10 +294,143 @@ export default function ArticleEditor() {
           </div>
           
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
-              <Eye className="mr-2 h-4 w-4" />
-              Preview
-            </Button>
+            <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Eye className="mr-2 h-4 w-4" />
+                  Preview
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+                <DialogHeader className="p-6 pb-0">
+                  <DialogTitle>Article Preview</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="max-h-[80vh] px-6 pb-6">
+                  <div className="space-y-6">
+                    {/* Preview Header */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="capitalize">
+                          {category || 'No category'}
+                        </Badge>
+                        <Badge variant="outline">
+                          {estimateReadTime(content)}
+                        </Badge>
+                      </div>
+                      
+                      <h1 className="text-3xl font-bold text-foreground leading-tight">
+                        {title || 'Untitled Article'}
+                      </h1>
+                      
+                      <p className="text-lg text-muted-foreground leading-relaxed">
+                        {subtitle || 'No subtitle provided'}
+                      </p>
+                      
+                      <div className="flex items-center gap-3 p-4 bg-card rounded-lg border border-border/50">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {author || 'No author'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {status === 'published' ? 'Published' : 'Draft'} • {new Date().toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Hero Image */}
+                    {mediaItems.length > 0 && mediaItems[0].type === 'image' && (
+                      <div className="mb-8">
+                        <img 
+                          src={mediaItems[0].url} 
+                          alt={title}
+                          className="w-full h-64 md:h-96 object-cover rounded-xl"
+                        />
+                      </div>
+                    )}
+
+                    {/* Article Content */}
+                    <div className="prose prose-lg dark:prose-invert max-w-none">
+                      {content ? (
+                        <div 
+                          dangerouslySetInnerHTML={{ 
+                            __html: content
+                              .replace(/\n\n/g, '</p><p>')
+                              .replace(/\n/g, '<br>')
+                              .replace(/^/, '<p>')
+                              .replace(/$/, '</p>')
+                              .replace(/<p><\/p>/g, '')
+                          }} 
+                        />
+                      ) : (
+                        <p className="text-muted-foreground italic">No content yet...</p>
+                      )}
+                    </div>
+
+                    {/* Tags */}
+                    {tags.length > 0 && (
+                      <div className="space-y-3">
+                        <Separator />
+                        <div>
+                          <h3 className="text-sm font-medium text-muted-foreground mb-3">Tags</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {tags.map((tag) => (
+                              <Badge key={tag} variant="outline" className="text-xs">
+                                #{tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sources */}
+                    {sources.length > 0 && (
+                      <div className="space-y-3">
+                        <Separator />
+                        <div>
+                          <h3 className="text-sm font-medium text-muted-foreground mb-3">Sources</h3>
+                          <div className="space-y-2">
+                            {sources.map((source) => (
+                              <div key={source.id} className="p-3 bg-card rounded-lg border border-border/50">
+                                <div className="flex items-start gap-3">
+                                  <Link2 className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-medium text-foreground truncate">
+                                      {source.title}
+                                    </h4>
+                                    {source.description && (
+                                      <p className="text-sm text-muted-foreground mt-1">
+                                        {source.description}
+                                      </p>
+                                    )}
+                                    <a 
+                                      href={source.url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-primary hover:text-primary/80 transition-colors mt-1 inline-block"
+                                    >
+                                      {source.url}
+                                    </a>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
             <Button 
               size="sm" 
               onClick={() => handleSave('draft')}
