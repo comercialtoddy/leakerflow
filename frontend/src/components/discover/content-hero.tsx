@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bookmark, Clock, ExternalLink } from 'lucide-react';
+import { Bookmark, Clock, ExternalLink, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -114,13 +114,27 @@ export const ContentHero = React.memo(function ContentHero({
 
           {/* Principle 3: The Source/Metadata - Trust and context */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{content.source}</span>
+            <div className="flex items-center space-x-3 text-xs text-muted-foreground">
+              <div className="flex items-center space-x-1">
+                <img 
+                  src={content.author_avatar || '/api/placeholder/32/32'} 
+                  alt={content.source}
+                  className="w-5 h-5 rounded-full object-cover"
+                />
+                <span className="font-medium text-foreground">{content.source}</span>
+              </div>
               <div className="flex items-center space-x-1">
                 <Clock className="h-3 w-3" />
-                <span>{content.readTime}</span>
+                <span>{content.readTime.replace(' read', '').replace('min', 'm')}</span>
               </div>
-              <span>{timeAgo}</span>
+              <div className="flex items-center space-x-1">
+                <Eye className="h-3 w-3" />
+                <span>{content.views || 0}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span className="text-xs">•</span>
+                <span>{timeAgo.replace('about ', '').replace(' ago', '')}</span>
+              </div>
             </div>
 
             {/* Read more indicator */}

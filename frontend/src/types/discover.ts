@@ -5,6 +5,7 @@ export interface ContentItem {
   subtitle: string;
   imageUrl: string;
   source: string;
+  author_avatar?: string;
   category: string;
   readTime: string;
   publishedAt: string;
@@ -14,6 +15,10 @@ export interface ContentItem {
   downvotes?: number;
   vote_score?: number;
   user_vote?: 'upvote' | 'downvote' | null;
+  // View tracking fields
+  views?: number;
+  total_views?: number;
+  unique_views?: number;
 }
 
 // Navigation category structure

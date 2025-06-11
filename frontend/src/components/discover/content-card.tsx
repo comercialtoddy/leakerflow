@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bookmark, Clock, ExternalLink } from 'lucide-react';
+import { Bookmark, Clock, ExternalLink, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -109,15 +109,27 @@ export const ContentCard = React.memo(function ContentCard({
 
           {/* Principle 3: The Source - Trust building, smallest text */}
           <div className="flex items-center justify-between mt-auto">
-            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground text-xs">{content.source}</span>
-              <span>•</span>
+            <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+              <div className="flex items-center space-x-1">
+                <img 
+                  src={content.author_avatar || '/api/placeholder/24/24'} 
+                  alt={content.source}
+                  className="w-4 h-4 rounded-full object-cover"
+                />
+                <span className="font-medium text-foreground text-xs">{content.source}</span>
+              </div>
               <div className="flex items-center space-x-1">
                 <Clock className="h-3 w-3" />
-                <span>{content.readTime}</span>
+                <span>{content.readTime.replace(' read', '').replace('min', 'm')}</span>
               </div>
-              <span>•</span>
-              <span>{timeAgo}</span>
+              <div className="flex items-center space-x-1">
+                <Eye className="h-3 w-3" />
+                <span>{content.views || 0}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span className="text-xs">•</span>
+                <span>{timeAgo.replace('about ', '').replace(' ago', '')}</span>
+              </div>
             </div>
 
             {/* Subtle read indicator - appears on hover */}

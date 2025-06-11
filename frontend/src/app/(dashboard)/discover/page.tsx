@@ -27,6 +27,7 @@ const convertArticleToContentItem = (article: any): ContentItem => ({
   subtitle: article.subtitle,
   imageUrl: article.image_url || '/api/placeholder/400/250',
   source: article.author,
+  author_avatar: article.author_avatar,
   category: article.category,
   readTime: article.read_time,
   publishedAt: article.publish_date || article.created_at,
@@ -36,6 +37,10 @@ const convertArticleToContentItem = (article: any): ContentItem => ({
   downvotes: article.downvotes || 0,
   vote_score: article.vote_score || 0,
   user_vote: article.user_vote || null,
+  // View tracking fields
+  views: article.views || 0,
+  total_views: article.total_views || 0,
+  unique_views: article.unique_views || 0,
 });
 
 // Optimized chunking utility with memoization
