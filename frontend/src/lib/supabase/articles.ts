@@ -6,6 +6,22 @@ type Article = Tables['articles']['Row'];
 type ArticleInsert = Tables['articles']['Insert'];
 type ArticleUpdate = Tables['articles']['Update'];
 
+interface ArticleSection {
+  id: string;
+  title: string;
+  content: string;
+  media: MediaItem[];
+  sources: SourceItem[];
+  order: number;
+}
+
+interface SourceItem {
+  id: string;
+  title: string;
+  url: string;
+  description?: string;
+}
+
 export interface CreateArticleData {
   title: string;
   subtitle: string;
@@ -16,6 +32,7 @@ export interface CreateArticleData {
   status: 'draft' | 'published' | 'archived' | 'scheduled';
   media_items: any[];
   sources: any[];
+  sections?: ArticleSection[];
   read_time: string;
   image_url?: string;
   publish_date?: string;
@@ -413,6 +430,7 @@ export class ArticlesService {
         status: validatedData.status,
         media_items: validatedData.media_items || [],
         sources: validatedData.sources || [],
+        sections: validatedData.sections || [],
         read_time: validatedData.read_time,
         image_url: validatedData.image_url,
         user_id: user.user.id,
@@ -465,6 +483,33 @@ export class ArticlesService {
 
       const { id, ...updateData } = articleData;
 
+      // First, check if the article exists and verify ownership
+      const { data: existingArticle, error: fetchError } = await this.supabase
+        .from('articles')
+        .select('id, user_id, title')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching article for update:', fetchError);
+        if (fetchError.code === 'PGRST116') {
+          throw new Error('Article not found. It may have been deleted or you may not have permission to access it.');
+        }
+        throw fetchError;
+      }
+
+      // Debug authentication and ownership
+      console.log('=== AUTHENTICATION DEBUG ===');
+      console.log('Current user ID:', user.user.id);
+      console.log('Article user ID:', existingArticle.user_id);
+      console.log('Article ID:', id);
+      console.log('Article title:', existingArticle.title);
+      console.log('User IDs match:', user.user.id === existingArticle.user_id);
+
+      if (user.user.id !== existingArticle.user_id) {
+        throw new Error('You do not have permission to update this article. Only the article author can make changes.');
+      }
+
       // Validate payload size before sending
       const validatedData = await this.validatePayloadSize(updateData, id);
 
@@ -473,6 +518,7 @@ export class ArticlesService {
       console.log('Content length:', validatedData.content?.length || 0);
       console.log('Media items count:', validatedData.media_items?.length || 0);
       console.log('Sources count:', validatedData.sources?.length || 0);
+      console.log('Sections count:', validatedData.sections?.length || 0);
 
       const { data, error } = await this.supabase
         .from('articles')
@@ -487,7 +533,15 @@ export class ArticlesService {
         .single();
 
       if (error) {
-        console.error('Error updating article:', error);
+        console.error('=== UPDATE ERROR DEBUG ===');
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        console.error('Error details:', error.details);
+        console.error('Error hint:', error.hint);
+        
+        if (error.code === 'PGRST116') {
+          throw new Error('Failed to update article. The article may have been deleted or you may have lost permission to edit it.');
+        }
         throw error;
       }
 
@@ -863,6 +917,23 @@ export class ArticlesService {
 
   private generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+  }
+
+  // Get articles for current user
+  async getUserArticles() {
+    try {
+      const { data, error } = await this.supabase
+        .from('articles')
+        .select('id, title, status, created_at, user_id')
+        .eq('user_id', (await this.supabase.auth.getUser()).data.user?.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching user articles:', error);
+      throw error;
+    }
   }
 }
 

@@ -48,6 +48,7 @@ export interface Database {
           status: 'draft' | 'published' | 'archived' | 'scheduled';
           media_items: any[];
           sources: any[];
+          sections: any[];
           read_time: string;
           image_url: string | null;
           views: number;
@@ -69,6 +70,7 @@ export interface Database {
           status?: 'draft' | 'published' | 'archived' | 'scheduled';
           media_items?: any[];
           sources?: any[];
+          sections?: any[];
           read_time: string;
           image_url?: string | null;
           views?: number;
@@ -90,6 +92,7 @@ export interface Database {
           status?: 'draft' | 'published' | 'archived' | 'scheduled';
           media_items?: any[];
           sources?: any[];
+          sections?: any[];
           read_time?: string;
           image_url?: string | null;
           views?: number;

@@ -55,6 +55,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface MediaItem {
   id: string;
@@ -69,6 +70,15 @@ interface Source {
   title: string;
   url: string;
   description?: string;
+}
+
+interface ArticleSection {
+  id: string;
+  title: string;
+  content: string;
+  media: MediaItem[];
+  sources: Source[];
+  order: number;
 }
 
 // Predefined categories that match the Discover navbar
@@ -89,6 +99,16 @@ export default function ArticleEditor() {
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [content, setContent] = useState('');
+  const [sections, setSections] = useState<ArticleSection[]>([
+    {
+      id: `section-${Date.now()}`,
+      title: '',
+      content: '',
+      media: [],
+      sources: [],
+      order: 0
+    }
+  ]);
   const [category, setCategory] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
@@ -98,6 +118,7 @@ export default function ArticleEditor() {
   const [status, setStatus] = useState<'draft' | 'published' | 'scheduled'>('draft');
   const [publishDate, setPublishDate] = useState('');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isOwner, setIsOwner] = useState(true); // Track if current user owns the article
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
@@ -112,24 +133,75 @@ export default function ArticleEditor() {
 
   // Load existing article data when editing
   useEffect(() => {
-    if (existingArticle) {
-      setTitle(existingArticle.title);
-      setSubtitle(existingArticle.subtitle);
-      setContent(existingArticle.content);
-      setCategory(existingArticle.category);
-      setTags(existingArticle.tags || []);
-      setAuthor(existingArticle.author);
-      setStatus(existingArticle.status);
-      setPublishDate(existingArticle.publish_date ? new Date(existingArticle.publish_date).toISOString().slice(0, 16) : '');
-      
-      // Convert JSONB data back to local state
-      if (existingArticle.sources) {
-        setSources(existingArticle.sources as Source[]);
+    const checkOwnership = async () => {
+      if (existingArticle) {
+        // Check if current user owns the article
+        try {
+          const { createClient } = await import('@/lib/supabase/client');
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user && existingArticle.user_id) {
+            setIsOwner(user.id === existingArticle.user_id);
+            console.log('Ownership check:', {
+              currentUserId: user.id,
+              articleUserId: existingArticle.user_id,
+              isOwner: user.id === existingArticle.user_id
+            });
+          }
+        } catch (error) {
+          console.error('Error checking ownership:', error);
+        }
+        
+        setTitle(existingArticle.title);
+        setSubtitle(existingArticle.subtitle);
+        setContent(existingArticle.content);
+        setCategory(existingArticle.category);
+        setTags(existingArticle.tags || []);
+        setAuthor(existingArticle.author);
+        setStatus(existingArticle.status);
+        setPublishDate(existingArticle.publish_date ? new Date(existingArticle.publish_date).toISOString().slice(0, 16) : '');
+        
+        // Load sections if they exist, otherwise create from content
+        if (existingArticle.sections && Array.isArray(existingArticle.sections) && existingArticle.sections.length > 0) {
+          console.log('Loading existing sections:', existingArticle.sections);
+          setSections(existingArticle.sections as ArticleSection[]);
+          
+          // Clear global media/sources since they're now in sections
+          setMediaItems([]);
+          setSources([]);
+        } else if (existingArticle.content) {
+          // Convert existing content to first section and migrate media/sources
+          const legacyMedia = existingArticle.media_items as MediaItem[] || [];
+          const legacySources = existingArticle.sources as Source[] || [];
+          
+          setSections([{
+            id: `section-${Date.now()}`,
+            title: '',
+            content: existingArticle.content,
+            media: legacyMedia,
+            sources: legacySources,
+            order: 0
+          }]);
+          
+          // Clear global media/sources since they're now in the section
+          setMediaItems([]);
+          setSources([]);
+        } else {
+          // No content or sections, create empty section
+          setSections([{
+            id: `section-${Date.now()}`,
+            title: '',
+            content: '',
+            media: [],
+            sources: [],
+            order: 0
+          }]);
+        }
       }
-      if (existingArticle.media_items) {
-        setMediaItems(existingArticle.media_items as MediaItem[]);
-      }
-    }
+    };
+    
+    checkOwnership();
   }, [existingArticle]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,6 +252,73 @@ export default function ArticleEditor() {
     setTags(prev => prev.filter(tag => tag !== tagToRemove));
   }, []);
 
+  const addSection = useCallback(() => {
+    const newSection: ArticleSection = {
+      id: `section-${Date.now()}`,
+      title: '',
+      content: '',
+      media: [],
+      sources: [],
+      order: sections.length
+    };
+    setSections(prev => [...prev, newSection]);
+  }, [sections.length]);
+
+  const updateSection = useCallback((id: string, updates: Partial<ArticleSection>) => {
+    setSections(prev => prev.map(section => 
+      section.id === id ? { ...section, ...updates } : section
+    ));
+  }, []);
+
+  const handleSectionMediaUpload = useCallback(async (sectionId: string, files: FileList) => {
+    const articlesService = new (await import('@/lib/supabase/articles')).ArticlesService();
+
+    for (const file of Array.from(files)) {
+      try {
+        const maxSize = 15 * 1024 * 1024; // 15MB
+        if (file.size > maxSize) {
+          toast.error(`File "${file.name}" exceeds 15MB limit`);
+          continue;
+        }
+
+        toast.info(`Uploading "${file.name}"...`);
+        const url = await articlesService.uploadFile(file);
+        
+        const newMediaItem: MediaItem = {
+          id: `media-${Date.now()}-${Math.random()}`,
+          type: file.type.startsWith('video/') ? 'video' : 'image',
+          url: url,
+          name: file.name,
+          size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+        };
+        
+        setSections(prev => prev.map(section => 
+          section.id === sectionId 
+            ? { ...section, media: [...section.media, newMediaItem] }
+            : section
+        ));
+        
+        toast.success(`"${file.name}" uploaded successfully!`);
+      } catch (error: any) {
+        toast.error(`Failed to upload "${file.name}": ${error.message}`);
+      }
+    }
+  }, []);
+
+  const addSourceToSection = useCallback((sectionId: string, source: Source) => {
+    setSections(prev => prev.map(section => 
+      section.id === sectionId 
+        ? { ...section, sources: [...section.sources, source] }
+        : section
+    ));
+  }, []);
+
+  const removeSection = useCallback((id: string) => {
+    if (sections.length > 1) {
+      setSections(prev => prev.filter(section => section.id !== id));
+    }
+  }, [sections.length]);
+
   const addSource = useCallback(() => {
     if (newSource.title.trim() && newSource.url.trim()) {
       const source: Source = {
@@ -216,25 +355,51 @@ export default function ArticleEditor() {
   }, []);
 
   const handleSave = useCallback(async (saveStatus: 'draft' | 'published' | 'scheduled' = 'draft') => {
-    if (!title.trim() || !subtitle.trim() || !content.trim() || !author.trim()) {
-      toast.error('Please fill in all required fields');
+    if (!title.trim() || !subtitle.trim() || !author.trim()) {
+      toast.error('Please fill in title, subtitle, and author');
       return;
     }
+
+    // Combine sections into single content for backward compatibility
+    const combinedContent = sections.map(section => {
+      let sectionText = '';
+      if (section.title.trim()) {
+        sectionText += `## ${section.title.trim()}\n\n`;
+      }
+      if (section.content.trim()) {
+        sectionText += section.content.trim();
+      }
+      return sectionText;
+    }).filter(s => s).join('\n\n');
+
+    // Collect all media and sources from sections
+    const allSectionMedia = sections.flatMap(section => section.media);
+    const allSectionSources = sections.flatMap(section => section.sources);
 
     const articleData = {
       title: title.trim(),
       subtitle: subtitle.trim(),
-      content: content.trim(),
+      content: combinedContent || content.trim(),
+      sections: sections,
       category,
       tags,
-      sources: sources,
-      media_items: mediaItems,
+      sources: [...sources, ...allSectionSources],
+      media_items: [...mediaItems, ...allSectionMedia],
       author: author.trim(),
-      read_time: estimateReadTime(content),
+      read_time: estimateReadTime(combinedContent || content),
       status: saveStatus,
-      image_url: mediaItems.length > 0 ? mediaItems[0].url : undefined,
+      image_url: (allSectionMedia.length > 0 ? allSectionMedia[0].url : mediaItems.length > 0 ? mediaItems[0].url : undefined),
       publish_date: (saveStatus === 'published' || saveStatus === 'scheduled') ? publishDate : undefined,
     };
+
+    // Debug logging
+    console.log('=== SAVE ARTICLE DEBUG ===');
+    console.log('Article ID:', articleId);
+    console.log('Is editing:', isEditing);
+    console.log('Sections count:', sections.length);
+    console.log('Sections data:', sections);
+    console.log('Total section media:', allSectionMedia.length);
+    console.log('Total section sources:', allSectionSources.length);
 
     try {
       if (isEditing && articleId) {
@@ -250,11 +415,26 @@ export default function ArticleEditor() {
       }
     } catch (error) {
       console.error('Error saving article:', error);
+      
+      // Provide specific error messages based on the error type
+      if (error instanceof Error) {
+        if (error.message.includes('permission')) {
+          toast.error('Permission denied: ' + error.message);
+        } else if (error.message.includes('not found')) {
+          toast.error('Article not found: ' + error.message);
+        } else if (error.message.includes('authenticated')) {
+          toast.error('Authentication required: Please log in and try again.');
+        } else {
+          toast.error('Error saving article: ' + error.message);
+        }
+      } else {
+        toast.error('An unexpected error occurred while saving the article.');
+      }
     }
   }, [
     title, subtitle, content, category, tags, sources, mediaItems, author, 
     publishDate, estimateReadTime, isEditing, articleId, updateArticleMutation, 
-    createArticleMutation, router
+    createArticleMutation, router, sections, status
   ]);
 
   if (loadingArticle) {
@@ -356,21 +536,77 @@ export default function ArticleEditor() {
                       </div>
                     )}
 
-                    {/* Article Content */}
-                    <div className="prose prose-lg dark:prose-invert max-w-none">
-                      {content ? (
-                        <div 
-                          dangerouslySetInnerHTML={{ 
-                            __html: content
-                              .replace(/\n\n/g, '</p><p>')
-                              .replace(/\n/g, '<br>')
-                              .replace(/^/, '<p>')
-                              .replace(/$/, '</p>')
-                              .replace(/<p><\/p>/g, '')
-                          }} 
-                        />
+                    {/* Article Sections */}
+                    <div className="space-y-8">
+                      {sections.length > 0 ? (
+                        sections.map((section) => (
+                          <div key={section.id} className="space-y-4">
+                            {section.title && (
+                              <h2 className="text-2xl font-semibold text-foreground border-b border-border/30 pb-2">
+                                {section.title}
+                              </h2>
+                            )}
+                            {section.content && (
+                              <div className="prose prose-lg dark:prose-invert max-w-none">
+                                <div 
+                                  dangerouslySetInnerHTML={{ 
+                                    __html: section.content
+                                      .replace(/\n\n/g, '</p><p>')
+                                      .replace(/\n/g, '<br>')
+                                      .replace(/^/, '<p>')
+                                      .replace(/$/, '</p>')
+                                      .replace(/<p><\/p>/g, '')
+                                  }} 
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Section Media in Preview */}
+                            {section.media && section.media.length > 0 && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
+                                {section.media.map((item) => (
+                                  <div key={item.id} className="rounded-lg overflow-hidden">
+                                    {item.type === 'image' ? (
+                                      <img
+                                        src={item.url}
+                                        alt={item.name}
+                                        className="w-full h-64 object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-64 bg-muted flex items-center justify-center">
+                                        <Video className="h-12 w-12 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Section Sources in Preview */}
+                            {section.sources.length > 0 && (
+                              <div className="space-y-2 my-4">
+                                <h4 className="text-sm font-medium text-muted-foreground">Sources for this section:</h4>
+                                <div className="space-y-1">
+                                  {section.sources.map((source) => (
+                                    <div key={source.id} className="text-sm p-2 bg-muted rounded-lg">
+                                      <p className="font-medium">{source.title}</p>
+                                      <a 
+                                        href={source.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-primary hover:underline"
+                                      >
+                                        {source.url}
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))
                       ) : (
-                        <p className="text-muted-foreground italic">No content yet...</p>
+                        <p className="text-muted-foreground italic">No sections added yet...</p>
                       )}
                     </div>
 
@@ -434,7 +670,7 @@ export default function ArticleEditor() {
             <Button 
               size="sm" 
               onClick={() => handleSave('draft')}
-              disabled={createArticleMutation.isPending || updateArticleMutation.isPending}
+              disabled={createArticleMutation.isPending || updateArticleMutation.isPending || (isEditing && !isOwner)}
             >
               {(createArticleMutation.isPending || updateArticleMutation.isPending) ? (
                 <>
@@ -452,7 +688,7 @@ export default function ArticleEditor() {
               size="sm" 
               variant="default"
               onClick={() => handleSave('published')}
-              disabled={createArticleMutation.isPending || updateArticleMutation.isPending}
+              disabled={createArticleMutation.isPending || updateArticleMutation.isPending || (isEditing && !isOwner)}
             >
               {(createArticleMutation.isPending || updateArticleMutation.isPending) ? (
                 <>
@@ -468,6 +704,17 @@ export default function ArticleEditor() {
             </Button>
           </div>
         </div>
+
+        {/* Ownership Warning */}
+        {isEditing && !isOwner && (
+          <Alert className="mb-6" variant="destructive">
+            <AlertTitle>Permission Denied</AlertTitle>
+            <AlertDescription>
+              You don't have permission to edit this article. Only the original author can make changes.
+              You can view the article content, but any attempts to save changes will be rejected.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-3">
           
@@ -508,204 +755,192 @@ export default function ArticleEditor() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="content">Content</Label>
-                  
-                  {/* Content size warning */}
-                  {content.length > 90000 && (
-                    <div className={`p-3 rounded-lg text-sm ${
-                      content.length > 100000 
-                        ? 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800' 
-                        : 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
-                    }`}>
-                      {content.length > 100000 ? (
-                        <>⚠️ Content exceeds 100K character limit and will be truncated when saved. Consider breaking this into multiple articles.</>
-                      ) : (
-                        <>⚠️ Content is approaching the 100K character limit ({((content.length / 100000) * 100).toFixed(1)}% used).</>
-                      )}
-                    </div>
-                  )}
-                  
-                  <RichTextEditor
-                    ref={richTextEditorRef}
-                    value={content}
-                    onChange={setContent}
-                    placeholder="Write your article content here... Use the toolbar for formatting or type in Markdown."
-                    minHeight="500px"
-                  />
-                  
-                  <div className={`text-xs text-muted-foreground ${content.length > 90000 ? 'text-amber-600' : content.length > 100000 ? 'text-red-600' : ''}`}>
-                    Estimated read time: {estimateReadTime(content)}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Media Library */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5" />
-                  Media Library
-                </CardTitle>
-                <CardDescription>
-                  Upload and manage images, videos, and other media
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                {/* Article Sections */}
                 <div className="space-y-4">
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                    <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Drag and drop files here, or click to browse
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <Label>Article Sections</Label>
                     <Button 
+                      type="button" 
+                      onClick={addSection}
                       variant="outline" 
-                      onClick={() => fileInputRef.current?.click()}
+                      size="sm"
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Upload Media
+                      Add Section
                     </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      accept="image/*,video/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
                   </div>
-
-                  {mediaItems.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {mediaItems.map((item) => (
-                        <motion.div
-                          key={item.id}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="relative group border rounded-lg overflow-hidden"
-                        >
-                          {item.type === 'image' ? (
-                            <img
-                              src={item.url}
-                              alt={item.name}
-                              className="w-full h-32 object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-32 bg-muted flex items-center justify-center">
-                              <Video className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => insertMediaIntoEditor(item.url, item.type)}
-                              title="Insert into article"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => removeMediaItem(item.id)}
-                              title="Remove from library"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <div className="p-2">
-                            <p className="text-xs font-medium truncate">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">{item.size}</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Sources */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Link2 className="h-5 w-5" />
-                  Sources & References
-                </CardTitle>
-                <CardDescription>
-                  Add credible sources and references for your article
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
-                    <div className="space-y-2">
-                      <Label htmlFor="source-title">Source Title</Label>
-                      <Input
-                        id="source-title"
-                        placeholder="Source name or title"
-                        value={newSource.title}
-                        onChange={(e) => setNewSource(prev => ({ ...prev, title: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="source-url">URL</Label>
-                      <Input
-                        id="source-url"
-                        placeholder="https://example.com"
-                        value={newSource.url}
-                        onChange={(e) => setNewSource(prev => ({ ...prev, url: e.target.value }))}
-                      />
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                      <Label htmlFor="source-description">Description (optional)</Label>
-                      <Input
-                        id="source-description"
-                        placeholder="Brief description of the source"
-                        value={newSource.description}
-                        onChange={(e) => setNewSource(prev => ({ ...prev, description: e.target.value }))}
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Button onClick={addSource} className="w-full">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Source
-                      </Button>
-                    </div>
-                  </div>
-
-                  {sources.length > 0 && (
-                    <div className="space-y-3">
-                      {sources.map((source) => (
-                        <motion.div
-                          key={source.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="flex items-start gap-3 p-3 border rounded-lg bg-background"
-                        >
-                          <Link2 className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-sm">{source.title}</h4>
-                            <p className="text-xs text-muted-foreground truncate">{source.url}</p>
-                            {source.description && (
-                              <p className="text-xs text-muted-foreground mt-1">{source.description}</p>
+                  
+                  <div className="space-y-4">
+                    {sections.map((section, index) => (
+                      <Card key={section.id} className="relative">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-base">
+                              Section {index + 1}
+                            </CardTitle>
+                            {sections.length > 1 && (
+                              <Button
+                                type="button"
+                                onClick={() => removeSection(section.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
                             )}
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removeSource(source.id)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          <div className="space-y-2">
+                            <Label htmlFor={`section-title-${section.id}`}>Section Title (Optional)</Label>
+                            <Input
+                              id={`section-title-${section.id}`}
+                              placeholder="Enter section title..."
+                              value={section.title}
+                              onChange={(e) => updateSection(section.id, { title: e.target.value })}
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor={`section-content-${section.id}`}>Section Content</Label>
+                            <RichTextEditor
+                              value={section.content}
+                              onChange={(value) => updateSection(section.id, { content: value })}
+                              placeholder="Write the content for this section..."
+                              minHeight="300px"
+                            />
+                          </div>
+
+                          {/* Section Media - Independent Upload */}
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <Label>Media for this Section</Label>
+                              <div>
+                                <Button 
+                                  type="button" 
+                                  onClick={() => document.getElementById(`media-upload-${section.id}`)?.click()}
+                                  variant="outline" 
+                                  size="sm"
+                                >
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Upload Media
+                                </Button>
+                                <input
+                                  id={`media-upload-${section.id}`}
+                                  type="file"
+                                  multiple
+                                  accept="image/*,video/*"
+                                  onChange={(e) => e.target.files && handleSectionMediaUpload(section.id, e.target.files)}
+                                  className="hidden"
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Show section's media */}
+                            {section.media && section.media.length > 0 && (
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {section.media.map((item) => (
+                                  <div key={item.id} className="relative group border rounded-lg overflow-hidden">
+                                    {item.type === 'image' ? (
+                                      <img src={item.url} alt={item.name} className="w-full h-24 object-cover" />
+                                    ) : (
+                                      <div className="w-full h-24 bg-muted flex items-center justify-center">
+                                        <Video className="h-6 w-6 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => updateSection(section.id, { 
+                                          media: section.media.filter(m => m.id !== item.id) 
+                                        })}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                    <div className="p-1">
+                                      <p className="text-xs truncate">{item.name}</p>
+                                      <p className="text-xs text-muted-foreground">{item.size}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Section Sources */}
+                          <div className="space-y-3">
+                            <Label>Sources for this Section</Label>
+                            
+                            {/* Add source form */}
+                            <div className="grid grid-cols-2 gap-3 p-3 border rounded-lg bg-muted/30">
+                              <Input
+                                placeholder="Source title"
+                                value={newSource.title}
+                                onChange={(e) => setNewSource(prev => ({ ...prev, title: e.target.value }))}
+                              />
+                              <Input
+                                placeholder="URL"
+                                value={newSource.url}
+                                onChange={(e) => setNewSource(prev => ({ ...prev, url: e.target.value }))}
+                              />
+                              <div className="col-span-2">
+                                <Button
+                                  type="button"
+                                  onClick={() => {
+                                    if (newSource.title.trim() && newSource.url.trim()) {
+                                      const source: Source = {
+                                        id: `source-${Date.now()}`,
+                                        title: newSource.title.trim(),
+                                        url: newSource.url.trim(),
+                                      };
+                                      addSourceToSection(section.id, source);
+                                      setNewSource({ title: '', url: '', description: '' });
+                                    }
+                                  }}
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Add Source
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            {/* Show section's sources */}
+                            {section.sources && section.sources.length > 0 && (
+                              <div className="space-y-2">
+                                {section.sources.map((source) => (
+                                  <div key={source.id} className="flex items-center justify-between p-2 border rounded bg-background">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">{source.title}</p>
+                                      <p className="text-xs text-muted-foreground truncate">{source.url}</p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => updateSection(section.id, { 
+                                        sources: section.sources.filter(s => s.id !== source.id) 
+                                      })}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
+
+
           </div>
 
           {/* Sidebar */}

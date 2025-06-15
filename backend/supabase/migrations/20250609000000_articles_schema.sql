@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS articles (
   media_items jsonb DEFAULT '[]',
   sources jsonb DEFAULT '[]',
   
+  -- Article sections for modular content
+  sections jsonb DEFAULT '[]',
+  
   -- Metadata
   read_time text NOT NULL,
   image_url text,
