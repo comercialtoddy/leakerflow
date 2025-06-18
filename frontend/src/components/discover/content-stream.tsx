@@ -4,13 +4,13 @@ import { ContentItem } from '@/types/discover';
 
 interface ContentStreamProps {
   content: ContentItem[];
-  onBookmarkToggle: (id: string) => void;
+  onSaveToggle: (id: string) => void;
   onVote?: (articleId: string, voteType: 'upvote' | 'downvote') => void;
 }
 
 export const ContentStream = React.memo(function ContentStream({ 
   content, 
-  onBookmarkToggle, 
+  onSaveToggle, 
   onVote 
 }: ContentStreamProps) {
   return (
@@ -19,7 +19,7 @@ export const ContentStream = React.memo(function ContentStream({
         <ContentCard
           key={item.id}
           content={item}
-          onBookmarkToggle={() => onBookmarkToggle(item.id)}
+          onSaveToggle={() => onSaveToggle(item.id)}
           onVote={onVote ? (voteType) => onVote(item.id, voteType) : undefined}
         />
       ))}

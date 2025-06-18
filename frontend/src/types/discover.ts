@@ -10,6 +10,7 @@ export interface ContentItem {
   readTime: string;
   publishedAt: string;
   bookmarked: boolean;
+  saved?: boolean;
   // Voting system fields
   upvotes?: number;
   downvotes?: number;

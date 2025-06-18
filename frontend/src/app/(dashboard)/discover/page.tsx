@@ -7,7 +7,7 @@ import {
   DiscoverHeader 
 } from '@/components/discover';
 import type { ContentItem } from '@/types/discover';
-import { useArticles, useToggleBookmark, useIncrementViews, useVoteOnArticle } from '@/hooks/react-query/articles/use-articles';
+import { useArticles, useSaveArticle, useIncrementViews, useVoteOnArticle } from '@/hooks/react-query/articles/use-articles';
 
 // Tab categories mapping
 export const TAB_CATEGORIES = {
@@ -31,16 +31,17 @@ const convertArticleToContentItem = (article: any): ContentItem => ({
   category: article.category,
   readTime: article.read_time,
   publishedAt: article.publish_date || article.created_at,
-  bookmarked: article.bookmarked,
+  saved: article.saved || article.bookmarked,
+  bookmarked: article.bookmarked, // Keep for backward compatibility
   // Voting fields
   upvotes: article.upvotes || 0,
   downvotes: article.downvotes || 0,
   vote_score: article.vote_score || 0,
   user_vote: article.user_vote || null,
-  // View tracking fields
-  views: article.views || 0,
-  total_views: article.total_views || 0,
-  unique_views: article.unique_views || 0,
+  // View tracking fields - properly handle views
+  views: article.views || article.total_views || 0,
+  total_views: article.total_views || article.views || 0,
+  unique_views: article.unique_views || article.total_views || article.views || 0,
 });
 
 // Optimized chunking utility with memoization
@@ -78,14 +79,20 @@ export default function DiscoverPage() {
     isFetchingNextPage 
   } = useArticles({ status: 'published' });
 
-  const toggleBookmarkMutation = useToggleBookmark();
+  const saveArticleMutation = useSaveArticle();
   const incrementViewsMutation = useIncrementViews();
   const voteOnArticleMutation = useVoteOnArticle();
 
   // Memoized article conversion and filtering by active tab
   const { convertedArticles, filteredArticles } = useMemo(() => {
     const allArticles = articlesData?.pages.flatMap(page => (page as any)?.articles || []) || [];
-    const converted = allArticles.map(convertArticleToContentItem);
+    
+    // Remove duplicates by article ID first
+    const uniqueArticles = Array.from(
+      new Map(allArticles.map(article => [article.id, article])).values()
+    );
+    
+    const converted = uniqueArticles.map(convertArticleToContentItem);
     
     // Filter articles by active tab category
     const filtered = activeTab === 'for-you' 
@@ -177,33 +184,33 @@ export default function DiscoverPage() {
     }
   }, [voteOnArticleMutation]);
 
-  // Optimized bookmark handler with optimistic updates
-  const handleBookmarkToggle = useCallback(async (contentId: string) => {
+  // Optimized save handler with optimistic updates
+  const handleSaveToggle = useCallback(async (contentId: string) => {
     // Immediate optimistic update
     setDisplayState(prev => ({
       ...prev,
       shownArticles: prev.shownArticles.map(item => 
         item.id === contentId 
-          ? { ...item, bookmarked: !item.bookmarked }
+          ? { ...item, saved: !item.saved, bookmarked: !item.saved }
           : item
       )
     }));
 
     try {
-      await toggleBookmarkMutation.mutateAsync(contentId);
+      await saveArticleMutation.mutateAsync(contentId);
     } catch (error) {
       // Revert on error
       setDisplayState(prev => ({
         ...prev,
         shownArticles: prev.shownArticles.map(item => 
           item.id === contentId 
-            ? { ...item, bookmarked: !item.bookmarked }
+            ? { ...item, saved: !item.saved, bookmarked: !item.saved }
             : item
         )
       }));
-      console.error('Failed to toggle bookmark:', error);
+      console.error('Failed to save article:', error);
     }
-  }, [toggleBookmarkMutation]);
+  }, [saveArticleMutation]);
 
   const handleContentClick = useCallback(async (content: ContentItem) => {
     try {
@@ -355,14 +362,14 @@ export default function DiscoverPage() {
                     {chunk[0] && (
                       <ContentHero
                         content={chunk[0]}
-                        onBookmarkToggle={() => handleBookmarkToggle(chunk[0].id)}
+                        onSaveToggle={() => handleSaveToggle(chunk[0].id)}
                         onVote={(voteType) => handleVote(chunk[0].id, voteType)}
                       />
                     )}
                     {chunk.length > 1 && (
                       <ContentStream
                         content={chunk.slice(1)}
-                        onBookmarkToggle={handleBookmarkToggle}
+                        onSaveToggle={handleSaveToggle}
                         onVote={handleVote}
                       />
                     )}

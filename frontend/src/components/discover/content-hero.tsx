@@ -7,16 +7,17 @@ import { formatDistanceToNow } from 'date-fns';
 import { ContentItem } from '@/types/discover';
 import { useRouter } from 'next/navigation';
 import { VotingButtons } from './voting-buttons';
+import { articlesService } from '@/lib/supabase/articles';
 
 interface ContentHeroProps {
   content: ContentItem;
-  onBookmarkToggle: () => void;
+  onSaveToggle: () => void;
   onVote?: (voteType: 'upvote' | 'downvote') => void;
 }
 
 export const ContentHero = React.memo(function ContentHero({ 
   content, 
-  onBookmarkToggle, 
+  onSaveToggle, 
   onVote 
 }: ContentHeroProps) {
   const router = useRouter();
@@ -26,9 +27,9 @@ export const ContentHero = React.memo(function ContentHero({
     router.push(`/discover/${content.id}`);
   };
 
-  const handleBookmarkClick = (e: React.MouseEvent) => {
+  const handleSaveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onBookmarkToggle();
+    onSaveToggle();
   };
 
   const handleReadMoreClick = (e: React.MouseEvent) => {
@@ -39,6 +40,9 @@ export const ContentHero = React.memo(function ContentHero({
   const handleVote = (voteType: 'upvote' | 'downvote') => {
     onVote?.(voteType);
   };
+
+  // Format the view count properly
+  const formattedViews = articlesService.formatViewCount(content.total_views || content.views || 0);
 
   return (
     <article 
@@ -60,15 +64,15 @@ export const ContentHero = React.memo(function ContentHero({
               {content.category}
             </Badge>
           </div>
-          {/* Bookmark action */}
+          {/* Save action */}
           <div className="absolute top-2 right-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleBookmarkClick}
+              onClick={handleSaveClick}
               className={cn(
                 "bg-background/80 backdrop-blur hover:bg-background/90 transition-all duration-200 h-6 w-6 p-0",
-                content.bookmarked 
+                content.saved || content.bookmarked 
                   ? "text-primary hover:text-primary/80" 
                   : "text-muted-foreground hover:text-foreground"
               )}
@@ -76,11 +80,11 @@ export const ContentHero = React.memo(function ContentHero({
               <Bookmark 
                 className={cn(
                   "h-3 w-3 transition-all duration-200",
-                  content.bookmarked && "fill-current"
+                  (content.saved || content.bookmarked) && "fill-current"
                 )} 
               />
               <span className="sr-only">
-                {content.bookmarked ? 'Remove bookmark' : 'Bookmark'}
+                {content.saved || content.bookmarked ? 'Remove save' : 'Save'}
               </span>
             </Button>
           </div>
@@ -121,7 +125,7 @@ export const ContentHero = React.memo(function ContentHero({
                   alt={content.source}
                   className="w-5 h-5 rounded-full object-cover"
                 />
-                <span className="font-medium text-foreground">{content.source}</span>
+                <span className="font-medium text-foreground">@{content.source}</span>
               </div>
               <div className="flex items-center space-x-1">
                 <Clock className="h-3 w-3" />
@@ -129,7 +133,7 @@ export const ContentHero = React.memo(function ContentHero({
               </div>
               <div className="flex items-center space-x-1">
                 <Eye className="h-3 w-3" />
-                <span>{content.views || 0}</span>
+                <span>{formattedViews}</span>
               </div>
               <div className="flex items-center space-x-1">
                 <span className="text-xs">•</span>

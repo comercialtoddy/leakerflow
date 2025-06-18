@@ -5,6 +5,7 @@ export { ContentHero } from './content-hero';
 export { ContentStream } from './content-stream';
 export { ContentCard } from './content-card';
 export { VotingButtons } from './voting-buttons';
+export { ActiveUsersIndicator, ArticleActiveUsers } from './active-users-indicator';
 
 // Re-export types for convenience
 export type { ContentItem, Category, ContentResponse, ContentActions } from '@/types/discover'; 

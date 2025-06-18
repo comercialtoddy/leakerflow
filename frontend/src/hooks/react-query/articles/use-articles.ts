@@ -174,6 +174,59 @@ export function useDashboardStats() {
   });
 }
 
+// Get enhanced dashboard statistics
+export function useEnhancedDashboardStats(daysBack: number = 30) {
+  return useQuery({
+    queryKey: [...articlesKeys.dashboardStats(), 'enhanced', daysBack],
+    queryFn: () => articlesService.getEnhancedDashboardStats(daysBack),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  });
+}
+
+// Get analytics time series
+export function useAnalyticsTimeSeries(
+  articleId?: string,
+  daysBack: number = 30,
+  metric: 'views' | 'shares' | 'saves' | 'engagement' = 'views'
+) {
+  return useQuery({
+    queryKey: [...articlesKeys.analytics(), 'timeSeries', { articleId, daysBack, metric }],
+    queryFn: () => articlesService.getAnalyticsTimeSeries(articleId, daysBack, metric),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+// Get top performing articles
+export function useTopPerformingArticles(
+  metric: 'views' | 'engagement' | 'shares' | 'saves' | 'trending' = 'views',
+  limit: number = 5
+) {
+  return useQuery({
+    queryKey: [...articlesKeys.analytics(), 'topPerformers', metric, limit],
+    queryFn: () => articlesService.getTopPerformingArticles(metric, limit),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Get category analytics
+export function useCategoryAnalytics() {
+  return useQuery({
+    queryKey: [...articlesKeys.analytics(), 'categories'],
+    queryFn: () => articlesService.getCategoryAnalytics(),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+// Get reader behavior insights
+export function useReaderBehaviorInsights(articleId?: string) {
+  return useQuery({
+    queryKey: [...articlesKeys.analytics(), 'behavior', articleId],
+    queryFn: () => articlesService.getReaderBehaviorInsights(articleId),
+    staleTime: 15 * 60 * 1000, // 15 minutes
+  });
+}
+
 // Increment views with optimistic update
 export function useIncrementViews() {
   const queryClient = useQueryClient();
@@ -232,7 +285,7 @@ export function useIncrementViews() {
   });
 }
 
-// Toggle bookmark with optimistic update
+// Toggle bookmark with optimistic update (kept for backwards compatibility)
 export function useToggleBookmark() {
   const queryClient = useQueryClient();
 
@@ -271,7 +324,69 @@ export function useToggleBookmark() {
   });
 }
 
-// Share article
+// Save article with optimistic update
+export function useSaveArticle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => articlesService.saveArticle(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: articlesKeys.detail(id) });
+
+      const previousArticle = queryClient.getQueryData(articlesKeys.detail(id));
+
+      queryClient.setQueryData(articlesKeys.detail(id), (old: any) => {
+        if (old) {
+          return {
+            ...old,
+            saved: !old.saved,
+            bookmarked: !old.bookmarked, // Also update bookmarked for compatibility
+          };
+        }
+        return old;
+      });
+
+      // Also update in lists
+      queryClient.setQueriesData({ queryKey: articlesKeys.lists() }, (old: any) => {
+        if (!old) return old;
+        
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            articles: page.articles?.map((article: any) => 
+              article.id === id 
+                ? { ...article, saved: !article.saved, bookmarked: !article.bookmarked }
+                : article
+            )
+          }))
+        };
+      });
+
+      return { previousArticle, id };
+    },
+    onError: (err, id, context) => {
+      if (context?.previousArticle) {
+        queryClient.setQueryData(articlesKeys.detail(context.id), context.previousArticle);
+      }
+      
+      // Revert list updates
+      queryClient.invalidateQueries({ queryKey: articlesKeys.lists() });
+      
+      toast.error('Failed to save article');
+    },
+    onSuccess: (saved) => {
+      toast.success(saved ? 'Article saved' : 'Save removed');
+    },
+    onSettled: (_, __, id) => {
+      queryClient.invalidateQueries({ queryKey: articlesKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: articlesKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: articlesKeys.dashboardStats() });
+    },
+  });
+}
+
+// Share article (no longer named useSaveArticle)
 export function useShareArticle() {
   const queryClient = useQueryClient();
 
@@ -285,23 +400,6 @@ export function useShareArticle() {
     },
     onError: () => {
       toast.error('Failed to track share');
-    },
-  });
-}
-
-// Save article
-export function useSaveArticle() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => articlesService.saveArticle(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: articlesKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: articlesKeys.dashboardStats() });
-      toast.success('Article saved!');
-    },
-    onError: () => {
-      toast.error('Failed to save article');
     },
   });
 }
@@ -417,4 +515,153 @@ export function useArticleMetrics(articleId: string) {
     trackComment: () => trackEvent.mutate({ articleId, eventType: 'comment' }),
     toggleBookmark: () => toggleBookmark.mutate(articleId),
   };
+}
+
+// =======================
+// REAL-TIME ACTIVITY
+// =======================
+
+// Track real-time activity
+export function useTrackRealtimeActivity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ 
+      articleId, 
+      activityType, 
+      metadata 
+    }: { 
+      articleId: string; 
+      activityType: 'viewing' | 'reading' | 'typing_comment';
+      metadata?: any;
+    }) => articlesService.trackRealtimeActivity(articleId, activityType, metadata),
+    onSuccess: (_, variables) => {
+      // Invalidate active users queries
+      queryClient.invalidateQueries({ 
+        queryKey: [...articlesKeys.all, 'activeUsers', variables.articleId] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: [...articlesKeys.all, 'globalActiveUsers'] 
+      });
+    },
+  });
+}
+
+// End real-time activity
+export function useEndRealtimeActivity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ 
+      articleId, 
+      activityType 
+    }: { 
+      articleId: string; 
+      activityType: 'viewing' | 'reading' | 'typing_comment';
+    }) => articlesService.endRealtimeActivity(articleId, activityType),
+    onSuccess: (_, variables) => {
+      // Invalidate active users queries
+      queryClient.invalidateQueries({ 
+        queryKey: [...articlesKeys.all, 'activeUsers', variables.articleId] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: [...articlesKeys.all, 'globalActiveUsers'] 
+      });
+    },
+  });
+}
+
+// Get active users for an article
+export function useArticleActiveUsers(articleId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [...articlesKeys.all, 'activeUsers', articleId],
+    queryFn: () => articlesService.getArticleActiveUsers(articleId!),
+    enabled: !!articleId && enabled,
+    staleTime: 10 * 1000, // 10 seconds
+    refetchInterval: 15 * 1000, // Refetch every 15 seconds
+  });
+}
+
+// Get global active users
+export function useGlobalActiveUsers() {
+  return useQuery({
+    queryKey: [...articlesKeys.all, 'globalActiveUsers'],
+    queryFn: () => articlesService.getGlobalActiveUsers(),
+    staleTime: 10 * 1000, // 10 seconds
+    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+  });
+}
+
+// Hook to track article viewing with activity heartbeat
+export function useTrackArticleViewing(articleId: string | null, enabled = true) {
+  const trackActivity = useTrackRealtimeActivity();
+  const endActivity = useEndRealtimeActivity();
+  const intervalRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  React.useEffect(() => {
+    if (!articleId || !enabled) return;
+
+    // Start tracking
+    trackActivity.mutate({ 
+      articleId, 
+      activityType: 'viewing' 
+    });
+
+    // Heartbeat every 15 seconds
+    intervalRef.current = setInterval(() => {
+      trackActivity.mutate({ 
+        articleId, 
+        activityType: 'viewing' 
+      });
+    }, 15000);
+
+    // Cleanup
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      endActivity.mutate({ 
+        articleId, 
+        activityType: 'viewing' 
+      });
+    };
+  }, [articleId, enabled]);
+}
+
+// Subscribe to activity updates for an article
+export function useArticleActivitySubscription(articleId: string | null) {
+  const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    if (!articleId) return;
+
+    const subscription = articlesService.subscribeToActivityChanges(articleId, () => {
+      // Invalidate active users query when activity changes
+      queryClient.invalidateQueries({ 
+        queryKey: [...articlesKeys.all, 'activeUsers', articleId] 
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [articleId, queryClient]);
+}
+
+// Subscribe to global activity updates
+export function useGlobalActivitySubscription() {
+  const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    const subscription = articlesService.subscribeToGlobalActivity(() => {
+      // Invalidate global active users query when activity changes
+      queryClient.invalidateQueries({ 
+        queryKey: [...articlesKeys.all, 'globalActiveUsers'] 
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [queryClient]);
 } 

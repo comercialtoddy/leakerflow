@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/supabase';
 
 type Tables = Database['public']['Tables'];
-type Article = Tables['articles']['Row'];
+type Article = Tables['articles']['Row'] & {
+  saved?: boolean; // Add saved field until Supabase types are regenerated
+};
 type ArticleInsert = Tables['articles']['Insert'];
 type ArticleUpdate = Tables['articles']['Update'];
 
@@ -879,6 +881,360 @@ export class ArticlesService {
     }
   }
 
+  // Get enhanced dashboard statistics
+  async getEnhancedDashboardStats(daysBack: number = 30): Promise<any> {
+    try {
+      const { data, error } = await this.supabase.rpc('get_enhanced_dashboard_stats', {
+        p_days_back: daysBack
+      });
+
+      if (error) {
+        console.warn('Enhanced stats not available, falling back to basic stats:', error);
+        // Fallback to basic stats if enhanced function doesn't exist
+        return this.getBasicDashboardStatsWithStructure(daysBack);
+      }
+      
+      // Check if we got empty data
+      const hasData = data?.metrics?.total_views > 0 || 
+                      data?.overview?.total_articles > 0;
+      
+      if (!hasData) {
+        // If no data from enhanced stats, use basic stats with same structure
+        return this.getBasicDashboardStatsWithStructure(daysBack);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching enhanced dashboard stats:', error);
+      // Fallback to basic stats
+      return this.getBasicDashboardStatsWithStructure(daysBack);
+    }
+  }
+
+  // Helper method to get basic stats in the same structure as enhanced stats
+  private async getBasicDashboardStatsWithStructure(daysBack: number = 30): Promise<any> {
+    try {
+      // Get current user
+      const { data: userData } = await this.supabase.auth.getUser();
+      const userId = userData?.user?.id;
+
+      if (!userId) {
+        console.warn('No authenticated user for dashboard stats');
+        return this.getEmptyStatsStructure(daysBack);
+      }
+
+      // Get all articles (both user's own and published by others)
+      const { data: articles, error } = await this.supabase
+        .from('articles')
+        .select('*')
+        .or(`user_id.eq.${userId},and(status.eq.published,user_id.neq.${userId})`);
+
+      if (error) {
+        console.error('Error fetching articles for stats:', error);
+        return this.getEmptyStatsStructure(daysBack);
+      }
+
+      const now = new Date();
+      const periodStart = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+      
+      // Filter articles for current period
+      const currentPeriodArticles = articles?.filter(a => 
+        new Date(a.created_at) >= periodStart
+      ) || [];
+
+      // Filter only user's articles for counts
+      const userArticles = currentPeriodArticles.filter(a => a.user_id === userId);
+
+      // Calculate basic metrics
+      const totalArticles = userArticles.length;
+      const publishedArticles = userArticles.filter(a => a.status === 'published').length;
+      const draftArticles = userArticles.filter(a => a.status === 'draft').length;
+      
+      // Use all articles for view metrics (including others' published articles user might have viewed)
+      const totalViews = currentPeriodArticles.reduce((sum, a) => sum + (a.total_views || a.views || 0), 0);
+      const uniqueViews = currentPeriodArticles.reduce((sum, a) => sum + (a.unique_views || 0), 0);
+      const totalShares = currentPeriodArticles.reduce((sum, a) => sum + (a.total_shares || 0), 0);
+      const totalSaves = currentPeriodArticles.reduce((sum, a) => sum + (a.total_saves || 0), 0);
+      const totalUpvotes = currentPeriodArticles.reduce((sum, a) => sum + (a.upvotes || 0), 0);
+      const totalDownvotes = currentPeriodArticles.reduce((sum, a) => sum + (a.downvotes || 0), 0);
+      
+      const avgEngagement = currentPeriodArticles.length > 0
+        ? currentPeriodArticles.reduce((sum, a) => sum + (a.engagement || 0), 0) / currentPeriodArticles.length
+        : 0;
+
+      // Return in the same structure as enhanced stats
+      return {
+        overview: {
+          total_articles: totalArticles,
+          published_articles: publishedArticles,
+          draft_articles: draftArticles,
+          trending_articles: currentPeriodArticles.filter(a => a.is_trending).length
+        },
+        metrics: {
+          total_views: totalViews,
+          unique_views: uniqueViews || totalViews, // Fallback to total views if unique not available
+          total_shares: totalShares,
+          total_saves: totalSaves,
+          total_comments: 0, // Not available in basic stats
+          total_upvotes: totalUpvotes,
+          total_downvotes: totalDownvotes,
+          avg_engagement: avgEngagement,
+          avg_read_time: currentPeriodArticles.reduce((sum, a) => sum + (a.avg_read_time || 0), 0) / (currentPeriodArticles.length || 1),
+          avg_bounce_rate: currentPeriodArticles.reduce((sum, a) => sum + (a.bounce_rate || 0), 0) / (currentPeriodArticles.length || 1)
+        },
+        growth: {
+          articles: 0, // Can't calculate without historical data
+          views: 0,
+          shares: 0,
+          saves: 0,
+          engagement: 0
+        },
+        recent_activity: {
+          views_24h: 0,
+          shares_24h: 0,
+          saves_24h: 0,
+          active_articles_24h: 0
+        },
+        period: {
+          start_date: periodStart.toISOString().split('T')[0],
+          end_date: now.toISOString().split('T')[0],
+          days: daysBack
+        }
+      };
+    } catch (error) {
+      console.error('Error in basic dashboard stats:', error);
+      return this.getEmptyStatsStructure(daysBack);
+    }
+  }
+
+  // Helper to get empty stats structure
+  private getEmptyStatsStructure(daysBack: number): any {
+    const now = new Date();
+    const periodStart = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+    
+    return {
+      overview: { total_articles: 0, published_articles: 0, draft_articles: 0, trending_articles: 0 },
+      metrics: {
+        total_views: 0, unique_views: 0, total_shares: 0, total_saves: 0,
+        total_comments: 0, total_upvotes: 0, total_downvotes: 0,
+        avg_engagement: 0, avg_read_time: 0, avg_bounce_rate: 0
+      },
+      growth: { articles: 0, views: 0, shares: 0, saves: 0, engagement: 0 },
+      recent_activity: { views_24h: 0, shares_24h: 0, saves_24h: 0, active_articles_24h: 0 },
+      period: { 
+        start_date: periodStart.toISOString().split('T')[0], 
+        end_date: now.toISOString().split('T')[0], 
+        days: daysBack 
+      }
+    };
+  }
+
+  // Get analytics time series data
+  async getAnalyticsTimeSeries(
+    articleId?: string,
+    daysBack: number = 30,
+    metric: 'views' | 'shares' | 'saves' | 'engagement' = 'views'
+  ): Promise<{ date: string; value: number }[]> {
+    try {
+      const { data, error } = await this.supabase.rpc('get_analytics_time_series', {
+        p_article_id: articleId || null,
+        p_days_back: daysBack,
+        p_metric: metric
+      });
+
+      if (error) {
+        console.warn('Time series analytics not available:', error);
+        // Return empty array for now
+        return [];
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching analytics time series:', error);
+      return [];
+    }
+  }
+
+  // Get top performing articles
+  async getTopPerformingArticles(
+    metric: 'views' | 'engagement' | 'shares' | 'saves' | 'trending' = 'views',
+    limit: number = 5
+  ): Promise<any[]> {
+    try {
+      const { data, error } = await this.supabase.rpc('get_top_performing_articles', {
+        p_metric: metric,
+        p_limit: limit
+      });
+
+      if (error) {
+        console.warn('Top performing articles function not available, using fallback:', error);
+        // Fallback to basic query
+        return this.getTopArticlesFallback(metric, limit);
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching top performing articles:', error);
+      return this.getTopArticlesFallback(metric, limit);
+    }
+  }
+
+  // Fallback method for top articles
+  private async getTopArticlesFallback(metric: string, limit: number): Promise<any[]> {
+    try {
+      let orderBy = 'total_views';
+      switch (metric) {
+        case 'engagement': orderBy = 'engagement'; break;
+        case 'shares': orderBy = 'total_shares'; break;
+        case 'saves': orderBy = 'total_saves'; break;
+        case 'trending': orderBy = 'trend_score'; break;
+      }
+
+      const { data, error } = await this.supabase
+        .from('articles')
+        .select('*')
+        .eq('status', 'published')
+        .order(orderBy, { ascending: false, nullsFirst: false })
+        .limit(limit);
+
+      if (error) throw error;
+      
+      return data?.map(article => ({
+        ...article,
+        metric_value: article[orderBy] || 0
+      })) || [];
+    } catch (error) {
+      console.error('Error in top articles fallback:', error);
+      return [];
+    }
+  }
+
+  // Get category analytics
+  async getCategoryAnalytics(): Promise<any[]> {
+    try {
+      const { data, error } = await this.supabase.rpc('get_category_analytics');
+
+      if (error) {
+        console.warn('Category analytics not available, using fallback:', error);
+        // Fallback to basic aggregation
+        return this.getCategoryAnalyticsFallback();
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching category analytics:', error);
+      return this.getCategoryAnalyticsFallback();
+    }
+  }
+
+  // Fallback for category analytics
+  private async getCategoryAnalyticsFallback(): Promise<any[]> {
+    try {
+      // Get current user
+      const { data: userData } = await this.supabase.auth.getUser();
+      const userId = userData?.user?.id;
+
+      if (!userId) {
+        console.warn('No authenticated user for category analytics');
+        return [];
+      }
+
+      const { data, error } = await this.supabase
+        .from('articles')
+        .select('category, total_views, total_shares, total_saves, engagement, avg_read_time, views')
+        .or(`user_id.eq.${userId},and(status.eq.published,user_id.neq.${userId})`);
+
+      if (error) throw error;
+
+      // Group by category manually
+      const categoryMap = new Map<string, any>();
+      
+      data?.forEach(article => {
+        const existing = categoryMap.get(article.category) || {
+          category: article.category,
+          article_count: 0,
+          total_views: 0,
+          total_shares: 0,
+          total_saves: 0,
+          engagement_sum: 0,
+          read_time_sum: 0
+        };
+        
+        existing.article_count++;
+        existing.total_views += article.total_views || article.views || 0;
+        existing.total_shares += article.total_shares || 0;
+        existing.total_saves += article.total_saves || 0;
+        existing.engagement_sum += article.engagement || 0;
+        existing.read_time_sum += article.avg_read_time || 0;
+        
+        categoryMap.set(article.category, existing);
+      });
+
+      return Array.from(categoryMap.values()).map(cat => ({
+        category: cat.category,
+        article_count: cat.article_count,
+        total_views: cat.total_views,
+        total_shares: cat.total_shares,
+        total_saves: cat.total_saves,
+        avg_engagement: cat.article_count > 0 ? Math.round((cat.engagement_sum / cat.article_count) * 100) / 100 : 0,
+        avg_read_time: cat.article_count > 0 ? Math.round((cat.read_time_sum / cat.article_count) * 100) / 100 : 0
+      })).sort((a, b) => b.total_views - a.total_views);
+    } catch (error) {
+      console.error('Error in category analytics fallback:', error);
+      return [];
+    }
+  }
+
+  // Get reader behavior insights
+  async getReaderBehaviorInsights(articleId?: string): Promise<any> {
+    try {
+      const { data, error } = await this.supabase.rpc('get_reader_behavior_insights', {
+        p_article_id: articleId || null
+      });
+
+      if (error) {
+        console.warn('Reader behavior insights not available:', error);
+        // Return default structure
+        return {
+          reading_patterns: {
+            avg_read_time_seconds: 0,
+            avg_scroll_depth: 0,
+            unique_readers: 0,
+            bounce_rate: 0,
+            engagement_rate: 0,
+            completion_rate: 0
+          },
+          time_distribution: {
+            morning: 0,
+            afternoon: 0,
+            evening: 0,
+            night: 0
+          }
+        };
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching reader behavior insights:', error);
+      return {
+        reading_patterns: {
+          avg_read_time_seconds: 0,
+          avg_scroll_depth: 0,
+          unique_readers: 0,
+          bounce_rate: 0,
+          engagement_rate: 0,
+          completion_rate: 0
+        },
+        time_distribution: {
+          morning: 0,
+          afternoon: 0,
+          evening: 0,
+          night: 0
+        }
+      };
+    }
+  }
+
   // Increment views (only for authenticated users, returns boolean indicating if view was counted)
   async incrementViews(id: string, readTime?: number, scrollPercentage?: number): Promise<boolean> {
     try {
@@ -909,7 +1265,7 @@ export class ArticlesService {
     }
   }
 
-  // Toggle bookmark
+  // Toggle bookmark (kept for backwards compatibility)
   async toggleBookmark(id: string) {
     try {
       const { data, error } = await this.supabase.rpc('toggle_article_bookmark', {
@@ -924,16 +1280,48 @@ export class ArticlesService {
     }
   }
 
+  // Save article (new method that tracks save event)
+  async saveArticle(id: string) {
+    try {
+      // Try the new save function first
+      const { data, error } = await this.supabase.rpc('toggle_article_save', {
+        article_id: id
+      });
+
+      if (error) {
+        // If the new function doesn't exist, fallback to bookmark
+        if (error.code === 'PGRST202' && error.message.includes('toggle_article_save')) {
+          console.warn('toggle_article_save not found, falling back to toggle_article_bookmark');
+          
+          const { data: bookmarkData, error: bookmarkError } = await this.supabase.rpc('toggle_article_bookmark', {
+            article_id: id
+          });
+          
+          if (bookmarkError) throw bookmarkError;
+          
+          // Track save event if article was saved
+          if (bookmarkData) {
+            await this.trackEvent(id, 'save');
+          }
+          
+          return bookmarkData;
+        }
+        throw error;
+      }
+      
+      // The RPC function already tracks the save event when saving
+      return data;
+    } catch (error) {
+      console.error('Error saving article:', error);
+      throw error;
+    }
+  }
+
   // Share article
   async shareArticle(id: string, platform?: string) {
     return this.trackEvent(id, 'share', {
       metadata: { platform }
     });
-  }
-
-  // Save article
-  async saveArticle(id: string) {
-    return this.trackEvent(id, 'save');
   }
 
   // Get article stats (legacy compatibility)
@@ -1037,6 +1425,179 @@ export class ArticlesService {
       console.error('Error fetching user articles:', error);
       throw error;
     }
+  }
+
+  // =======================
+  // REAL-TIME ACTIVITY
+  // =======================
+
+  // Generate unique session ID for activity tracking
+  private getSessionId(): string {
+    if (typeof window !== 'undefined') {
+      const existing = sessionStorage.getItem('article_session_id');
+      if (existing) return existing;
+      
+      const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+      sessionStorage.setItem('article_session_id', newSessionId);
+      return newSessionId;
+    }
+    return 'server_session';
+  }
+
+  // Track real-time activity
+  async trackRealtimeActivity(
+    articleId: string,
+    activityType: 'viewing' | 'reading' | 'typing_comment',
+    metadata?: any
+  ) {
+    try {
+      const { data, error } = await this.supabase.rpc('track_realtime_activity', {
+        p_article_id: articleId,
+        p_activity_type: activityType,
+        p_session_id: this.getSessionId(),
+        p_metadata: metadata || {}
+      });
+
+      if (error) {
+        console.warn('Error tracking realtime activity:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error tracking realtime activity:', error);
+      return null;
+    }
+  }
+
+  // End real-time activity
+  async endRealtimeActivity(
+    articleId: string,
+    activityType: 'viewing' | 'reading' | 'typing_comment'
+  ) {
+    try {
+      const { data, error } = await this.supabase.rpc('end_realtime_activity', {
+        p_article_id: articleId,
+        p_activity_type: activityType,
+        p_session_id: this.getSessionId()
+      });
+
+      if (error) {
+        console.warn('Error ending realtime activity:', error);
+        return false;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error ending realtime activity:', error);
+      return false;
+    }
+  }
+
+  // Get active users for an article
+  async getArticleActiveUsers(articleId: string, timeoutSeconds: number = 30) {
+    try {
+      const { data, error } = await this.supabase.rpc('get_article_active_users', {
+        p_article_id: articleId,
+        p_activity_timeout_seconds: timeoutSeconds
+      });
+
+      if (error) {
+        console.warn('Error getting article active users:', error);
+        return {
+          total_active: 0,
+          viewing: 0,
+          reading: 0,
+          typing_comment: 0,
+          users: []
+        };
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error getting article active users:', error);
+      return {
+        total_active: 0,
+        viewing: 0,
+        reading: 0,
+        typing_comment: 0,
+        users: []
+      };
+    }
+  }
+
+  // Get global active users summary
+  async getGlobalActiveUsers(timeoutSeconds: number = 30) {
+    try {
+      const { data, error } = await this.supabase.rpc('get_global_active_users', {
+        p_activity_timeout_seconds: timeoutSeconds
+      });
+
+      if (error) {
+        console.warn('Error getting global active users:', error);
+        return {
+          total_active_users: 0,
+          total_active_articles: 0,
+          categories: []
+        };
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error getting global active users:', error);
+      return {
+        total_active_users: 0,
+        total_active_articles: 0,
+        categories: []
+      };
+    }
+  }
+
+  // Subscribe to real-time activity changes
+  subscribeToActivityChanges(articleId: string, callback: (payload: any) => void) {
+    return this.supabase
+      .channel(`article_activity:${articleId}`)
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'article_realtime_activity',
+          filter: `article_id=eq.${articleId}`
+        }, 
+        callback
+      )
+      .subscribe();
+  }
+
+  // Subscribe to global activity changes
+  subscribeToGlobalActivity(callback: (payload: any) => void) {
+    return this.supabase
+      .channel('global_article_activity')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'article_realtime_activity'
+        }, 
+        callback
+      )
+      .subscribe();
+  }
+
+  // =======================
+  // HELPER METHODS
+  // =======================
+
+  // Format views count for display
+  formatViewCount(views: number): string {
+    if (!views || views === 0) return '0';
+    
+    if (views >= 1000000) {
+      return `${(views / 1000000).toFixed(1)}M`;
+    } else if (views >= 1000) {
+      return `${(views / 1000).toFixed(1)}K`;
+    }
+    return views.toString();
   }
 }
 

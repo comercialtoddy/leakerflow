@@ -5,10 +5,18 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Bookmark, Clock, ExternalLink, Share2, Loader2, Video, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { DiscoverHeader } from '@/components/discover';
+import { DiscoverHeader, VotingButtons } from '@/components/discover';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { useArticle, useToggleBookmark, useAutoTrackView, useArticleMetrics } from '@/hooks/react-query/articles/use-articles';
+import { 
+  useArticle, 
+  useSaveArticle, 
+  useAutoTrackView, 
+  useArticleMetrics,
+  useVoteOnArticle,
+  useTrackArticleViewing 
+} from '@/hooks/react-query/articles/use-articles';
+import { articlesService } from '@/lib/supabase/articles';
 
 export default function ArticlePage() {
   const params = useParams();
@@ -17,18 +25,32 @@ export default function ArticlePage() {
 
   // React Query hooks
   const { data: article, isLoading, error } = useArticle(articleId);
-  const toggleBookmarkMutation = useToggleBookmark();
+  const saveArticleMutation = useSaveArticle();
+  const voteOnArticleMutation = useVoteOnArticle();
   const { trackShare } = useArticleMetrics(articleId);
+  
+  // Track real-time viewing activity
+  useTrackArticleViewing(articleId, !isLoading && !!article);
   
   // Auto-track views when article is loaded
   useAutoTrackView(articleId, !isLoading && !!article);
 
-  const handleBookmarkToggle = async () => {
+  const handleSaveToggle = async () => {
     if (article) {
       try {
-        await toggleBookmarkMutation.mutateAsync(articleId);
+        await saveArticleMutation.mutateAsync(articleId);
       } catch (error) {
-        console.error('Failed to toggle bookmark:', error);
+        console.error('Failed to save article:', error);
+      }
+    }
+  };
+
+  const handleVote = async (voteType: 'upvote' | 'downvote') => {
+    if (article) {
+      try {
+        await voteOnArticleMutation.mutateAsync({ articleId, voteType });
+      } catch (error) {
+        console.error('Failed to vote:', error);
       }
     }
   };
@@ -89,6 +111,7 @@ export default function ArticlePage() {
   }
 
   const timeAgo = formatDistanceToNow(new Date(article.created_at), { addSuffix: true });
+  const formattedViews = articlesService.formatViewCount(article.total_views || article.views || 0);
 
   return (
     <>
@@ -125,15 +148,26 @@ export default function ArticlePage() {
                 {article.subtitle}
               </p>
 
-              {/* Action buttons */}
+              {/* Action buttons with voting - inline variant */}
               <div className="flex items-center gap-3 mb-8">
+                {/* Voting buttons - inline variant */}
+                <VotingButtons
+                  upvotes={article.upvotes || 0}
+                  downvotes={article.downvotes || 0}
+                  userVote={article.user_vote || null}
+                  onVote={handleVote}
+                  variant="inline"
+                />
+                
+                <div className="h-8 w-px bg-border/50 mx-2" />
+                
                 <Button
-                  onClick={handleBookmarkToggle}
+                  onClick={handleSaveToggle}
                   variant="outline"
                   size="sm"
-                  disabled={toggleBookmarkMutation.isPending}
+                  disabled={saveArticleMutation.isPending}
                   className={cn(
-                    article.bookmarked 
+                    article.saved || article.bookmarked
                       ? "text-primary border-primary/20 bg-primary/5" 
                       : "text-muted-foreground"
                   )}
@@ -141,10 +175,10 @@ export default function ArticlePage() {
                   <Bookmark 
                     className={cn(
                       "h-4 w-4 mr-2",
-                      article.bookmarked && "fill-current"
+                      (article.saved || article.bookmarked) && "fill-current"
                     )} 
                   />
-                  {article.bookmarked ? 'Bookmarked' : 'Bookmark'}
+                  {article.saved || article.bookmarked ? 'Saved' : 'Save'}
                 </Button>
                 
                 <Button onClick={handleShare} variant="outline" size="sm">
@@ -315,6 +349,49 @@ export default function ArticlePage() {
               </div>
             )}
 
+            {/* Bottom action buttons with voting */}
+            <div className="mt-12 mb-8 p-6 bg-muted/30 rounded-lg border border-border/50">
+              <p className="text-sm text-muted-foreground mb-4 text-center">
+                Did you find this article helpful?
+              </p>
+              <div className="flex items-center justify-center gap-4">
+                {/* Voting buttons - inline variant */}
+                <VotingButtons
+                  upvotes={article.upvotes || 0}
+                  downvotes={article.downvotes || 0}
+                  userVote={article.user_vote || null}
+                  onVote={handleVote}
+                  variant="inline"
+                />
+                
+                <div className="h-8 w-px bg-border/50 mx-2" />
+                
+                <Button
+                  onClick={handleSaveToggle}
+                  variant="outline"
+                  disabled={saveArticleMutation.isPending}
+                  className={cn(
+                    article.saved || article.bookmarked
+                      ? "text-primary border-primary/20 bg-primary/5" 
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <Bookmark 
+                    className={cn(
+                      "h-4 w-4 mr-2",
+                      (article.saved || article.bookmarked) && "fill-current"
+                    )} 
+                  />
+                  {article.saved || article.bookmarked ? 'Saved' : 'Save'}
+                </Button>
+                
+                <Button onClick={handleShare} variant="outline">
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share
+                </Button>
+              </div>
+            </div>
+
             {/* Article stats - Minimal and discrete */}
             <div className="flex items-center gap-4 text-sm text-muted-foreground border-t border-border/30 pt-4">
               <div className="flex items-center gap-1">
@@ -323,14 +400,23 @@ export default function ArticlePage() {
               </div>
               <span>•</span>
               <div className="flex items-center gap-1">
-                <span>{(article.total_views || article.views || 0).toLocaleString()} views</span>
+                <span>{formattedViews} views</span>
               </div>
               {(article.total_shares || 0) > 0 && (
                 <>
                   <span>•</span>
                   <div className="flex items-center gap-1">
                     <Share2 className="h-3 w-3" />
-                    <span>{article.total_shares}</span>
+                    <span>{article.total_shares} shares</span>
+                  </div>
+                </>
+              )}
+              {(article.total_saves || 0) > 0 && (
+                <>
+                  <span>•</span>
+                  <div className="flex items-center gap-1">
+                    <Bookmark className="h-3 w-3" />
+                    <span>{article.total_saves} saves</span>
                   </div>
                 </>
               )}

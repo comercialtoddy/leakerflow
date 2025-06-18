@@ -7,16 +7,17 @@ import { formatDistanceToNow } from 'date-fns';
 import { ContentItem } from '@/types/discover';
 import { useRouter } from 'next/navigation';
 import { VotingButtons } from './voting-buttons';
+import { articlesService } from '@/lib/supabase/articles';
 
 interface ContentCardProps {
   content: ContentItem;
-  onBookmarkToggle: () => void;
+  onSaveToggle: () => void;
   onVote?: (voteType: 'upvote' | 'downvote') => void;
 }
 
 export const ContentCard = React.memo(function ContentCard({ 
   content, 
-  onBookmarkToggle, 
+  onSaveToggle, 
   onVote 
 }: ContentCardProps) {
   const router = useRouter();
@@ -26,14 +27,17 @@ export const ContentCard = React.memo(function ContentCard({
     router.push(`/discover/${content.id}`);
   };
 
-  const handleBookmarkClick = (e: React.MouseEvent) => {
+  const handleSaveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onBookmarkToggle();
+    onSaveToggle();
   };
 
   const handleVote = (voteType: 'upvote' | 'downvote') => {
     onVote?.(voteType);
   };
+
+  // Format the view count properly
+  const formattedViews = articlesService.formatViewCount(content.total_views || content.views || 0);
 
   return (
     <article 
@@ -55,15 +59,15 @@ export const ContentCard = React.memo(function ContentCard({
               {content.category}
             </Badge>
           </div>
-          {/* Bookmark action */}
+          {/* Save action */}
           <div className="absolute top-2 right-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleBookmarkClick}
+              onClick={handleSaveClick}
               className={cn(
                 "bg-background/80 backdrop-blur hover:bg-background/90 transition-all duration-200 h-6 w-6 p-0",
-                content.bookmarked 
+                content.saved || content.bookmarked 
                   ? "text-primary hover:text-primary/80" 
                   : "text-muted-foreground hover:text-foreground"
               )}
@@ -71,11 +75,11 @@ export const ContentCard = React.memo(function ContentCard({
               <Bookmark 
                 className={cn(
                   "h-3 w-3 transition-all duration-200",
-                  content.bookmarked && "fill-current"
+                  (content.saved || content.bookmarked) && "fill-current"
                 )} 
               />
               <span className="sr-only">
-                {content.bookmarked ? 'Remove bookmark' : 'Bookmark'}
+                {content.saved || content.bookmarked ? 'Remove save' : 'Save'}
               </span>
             </Button>
           </div>
@@ -109,27 +113,19 @@ export const ContentCard = React.memo(function ContentCard({
 
           {/* Principle 3: The Source - Trust building, smallest text */}
           <div className="flex items-center justify-between mt-auto">
-            <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+            <div className="flex items-center space-x-3 text-xs text-muted-foreground">
               <div className="flex items-center space-x-1">
                 <img 
                   src={content.author_avatar || '/api/placeholder/24/24'} 
                   alt={content.source}
                   className="w-4 h-4 rounded-full object-cover"
                 />
-                <span className="font-medium text-foreground text-xs">{content.source}</span>
+                <span className="font-medium text-foreground text-xs">@{content.source}</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <Clock className="h-3 w-3" />
-                <span>{content.readTime.replace(' read', '').replace('min', 'm')}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Eye className="h-3 w-3" />
-                <span>{content.views || 0}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <span className="text-xs">•</span>
-                <span>{timeAgo.replace('about ', '').replace(' ago', '')}</span>
-              </div>
+              <span>{content.readTime.replace(' read', '').replace('min', 'm')}</span>
+              <span>{formattedViews}</span>
+              <span className="text-xs">•</span>
+              <span>{timeAgo.replace('about ', '').replace(' ago', '')}</span>
             </div>
 
             {/* Subtle read indicator - appears on hover */}
