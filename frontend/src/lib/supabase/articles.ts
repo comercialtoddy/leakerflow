@@ -367,7 +367,7 @@ export class ArticlesService {
         // Fallback to direct query if not found in paginated results
         const { data: fallbackData, error: fallbackError } = await this.supabase
           .from('articles')
-          .select('*, upvotes, downvotes, vote_score, trend_score, is_trending')
+          .select('*, upvotes, downvotes, vote_score, trend_score, is_trending, sections')
           .eq('id', id)
           .single();
 

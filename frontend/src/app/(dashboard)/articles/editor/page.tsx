@@ -360,35 +360,28 @@ export default function ArticleEditor() {
       return;
     }
 
-    // Combine sections into single content for backward compatibility
-    const combinedContent = sections.map(section => {
-      let sectionText = '';
-      if (section.title.trim()) {
-        sectionText += `## ${section.title.trim()}\n\n`;
-      }
-      if (section.content.trim()) {
-        sectionText += section.content.trim();
-      }
-      return sectionText;
-    }).filter(s => s).join('\n\n');
+    // Get first section's content as main content for display purposes
+    const mainContent = sections[0]?.content || '';
 
-    // Collect all media and sources from sections
-    const allSectionMedia = sections.flatMap(section => section.media);
-    const allSectionSources = sections.flatMap(section => section.sources);
+    // Ensure sections have proper order numbers
+    const orderedSections = sections.map((section, index) => ({
+      ...section,
+      order: index
+    }));
 
     const articleData = {
       title: title.trim(),
       subtitle: subtitle.trim(),
-      content: combinedContent || content.trim(),
-      sections: sections,
+      content: mainContent,
+      sections: orderedSections,
       category,
       tags,
-      sources: [...sources, ...allSectionSources],
-      media_items: [...mediaItems, ...allSectionMedia],
+      sources: [], // Keep global sources empty since we're using section-specific sources
+      media_items: mediaItems, // Keep header image in global media_items
       author: author.trim(),
-      read_time: estimateReadTime(combinedContent || content),
+      read_time: estimateReadTime(mainContent),
       status: saveStatus,
-      image_url: (allSectionMedia.length > 0 ? allSectionMedia[0].url : mediaItems.length > 0 ? mediaItems[0].url : undefined),
+      image_url: mediaItems[0]?.url, // Use header image from mediaItems
       publish_date: (saveStatus === 'published' || saveStatus === 'scheduled') ? publishDate : undefined,
     };
 
@@ -396,10 +389,9 @@ export default function ArticleEditor() {
     console.log('=== SAVE ARTICLE DEBUG ===');
     console.log('Article ID:', articleId);
     console.log('Is editing:', isEditing);
-    console.log('Sections count:', sections.length);
-    console.log('Sections data:', sections);
-    console.log('Total section media:', allSectionMedia.length);
-    console.log('Total section sources:', allSectionSources.length);
+    console.log('Sections count:', orderedSections.length);
+    console.log('Sections data:', orderedSections);
+    console.log('Header image:', mediaItems[0]?.url);
 
     try {
       if (isEditing && articleId) {
@@ -733,6 +725,52 @@ export default function ArticleEditor() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Header Image Upload - Moved to top */}
+                <div className="space-y-2">
+                  <Label>Header Image</Label>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      Upload Header Image
+                    </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    {mediaItems.length > 0 && mediaItems[0] && (
+                      <span className="text-sm text-muted-foreground">
+                        Current: {mediaItems[0].name}
+                      </span>
+                    )}
+                  </div>
+                  {mediaItems.length > 0 && mediaItems[0] && (
+                    <div className="relative mt-4">
+                      <img
+                        src={mediaItems[0].url}
+                        alt="Header"
+                        className="w-full h-64 md:h-80 lg:h-96 object-cover rounded-lg shadow-lg"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => removeMediaItem(mediaItems[0].id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="title">Title</Label>
                   <Input

@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Bookmark, Clock, ExternalLink, Share2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Bookmark, Clock, ExternalLink, Share2, Loader2, Video, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DiscoverHeader } from '@/components/discover';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticle, useToggleBookmark, useAutoTrackView, useArticleMetrics } from '@/hooks/react-query/articles/use-articles';
-import type { Article } from '@/lib/supabase/articles';
 
 export default function ArticlePage() {
   const params = useParams();
@@ -57,7 +56,6 @@ export default function ArticlePage() {
   if (isLoading) {
     return (
       <>
-        <DiscoverHeader />
         <div className="min-h-screen bg-background">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
             <div className="flex justify-center items-center py-20">
@@ -72,7 +70,6 @@ export default function ArticlePage() {
   if (error || !article) {
     return (
       <>
-        <DiscoverHeader />
         <div className="min-h-screen bg-background">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
             <div className="text-center py-20">
@@ -95,9 +92,8 @@ export default function ArticlePage() {
 
   return (
     <>
-      <DiscoverHeader />
       <div className="min-h-screen bg-background">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
           <article className="pb-16">
             {/* Back button */}
             <div className="mb-6">
@@ -201,16 +197,86 @@ export default function ArticlePage() {
 
             {/* Article content */}
             <div className="prose prose-lg dark:prose-invert max-w-none mb-12">
+              {article.sections && article.sections.length > 0 ? (
+                <div className="space-y-8">
+                  {article.sections.map((section: any, index: number) => (
+                    <div key={section.id || index} className="space-y-4">
+                      {section.title && (
+                        <h2 className="text-2xl font-semibold text-foreground border-b border-border/30 pb-2">
+                          {section.title}
+                        </h2>
+                      )}
+                      <div 
+                        dangerouslySetInnerHTML={{ 
+                          __html: section.content
+                            .replace(/\n/g, '<br />')
+                            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="rounded-lg shadow-lg my-4" />')
+                            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>')
+                        }} 
+                      />
+                      
+                      {/* Section media */}
+                      {section.media && section.media.length > 0 && (
+                        <div className="grid grid-cols-1 gap-4 mt-4">
+                          {section.media.map((item: any) => (
+                            <div key={item.id} className="relative">
+                              {item.type === 'image' ? (
+                                <img 
+                                  src={item.url} 
+                                  alt={item.name} 
+                                  className="rounded-lg shadow-lg object-cover w-full h-56 md:h-80"
+                                />
+                              ) : (
+                                <video 
+                                  src={item.url} 
+                                  controls 
+                                  className="rounded-lg shadow-lg w-full h-56 md:h-80"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Section sources */}
+                      {section.sources && section.sources.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <h3 className="text-lg font-medium text-foreground">Sources</h3>
+                          <div className="space-y-2">
+                            {section.sources.map((source: any) => (
+                              <div key={source.id} className="flex items-start space-x-2">
+                                <Link2 className="h-4 w-4 mt-1 text-muted-foreground" />
+                                <div>
+                                  <a 
+                                    href={source.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline"
+                                  >
+                                    {source.title}
+                                  </a>
+                                  {source.description && (
+                                    <p className="text-sm text-muted-foreground">{source.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
               <div 
                 dangerouslySetInnerHTML={{ 
                   __html: article.content
-                    .replace(/\n\n/g, '</p><p>')
-                    .replace(/\n/g, '<br>')
-                    .replace(/^/, '<p>')
-                    .replace(/$/, '</p>')
-                    .replace(/<p><\/p>/g, '')
+                      .replace(/\n/g, '<br />')
+                      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="rounded-lg shadow-lg my-4" />')
+                      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>')
                 }} 
               />
+              )}
             </div>
 
             {/* Tags */}
