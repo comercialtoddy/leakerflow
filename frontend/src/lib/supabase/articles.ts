@@ -106,7 +106,7 @@ export class ArticlesService {
   private readonly MAX_MEDIA_ITEMS = 20; // Maximum 20 media items
   private readonly MAX_SOURCES = 50; // Maximum 50 sources
   private readonly STORAGE_THRESHOLD = 4000; // Store content in storage if larger than 4KB
-  private readonly TOTAL_PAYLOAD_LIMIT = 7000; // Total JSON payload limit (7KB to be safe)
+  private readonly TOTAL_PAYLOAD_LIMIT = 1000000; // Total JSON payload limit (1MB - PostgreSQL can handle up to ~1GB per field)
 
   private async storeContentInStorage(content: string, articleId: string): Promise<string> {
     try {
@@ -128,6 +128,26 @@ export class ArticlesService {
     }
   }
 
+  private async storeLargeDataInStorage(data: any, articleId: string, dataType: 'sections' | 'media_items' | 'sources'): Promise<string> {
+    try {
+      const fileName = `articles/${articleId}/${dataType}.json`;
+      const contentData = JSON.stringify({ [dataType]: data, timestamp: new Date().toISOString() });
+      
+      const { data: uploadData, error } = await this.supabase.storage
+        .from('articles-media')
+        .upload(fileName, contentData, {
+          contentType: 'application/json',
+          upsert: true
+        });
+
+      if (error) throw error;
+      return fileName;
+    } catch (error) {
+      console.error(`Error storing ${dataType} in storage:`, error);
+      throw error;
+    }
+  }
+
   private async getContentFromStorage(storagePath: string): Promise<string> {
     try {
       const { data, error } = await this.supabase.storage
@@ -141,6 +161,22 @@ export class ArticlesService {
     } catch (error) {
       console.error('Error retrieving content from storage:', error);
       throw error;
+    }
+  }
+
+  private async getLargeDataFromStorage(storagePath: string, dataType: 'sections' | 'media_items' | 'sources'): Promise<any> {
+    try {
+      const { data, error } = await this.supabase.storage
+        .from('articles-media')
+        .download(storagePath);
+
+      if (error) throw error;
+      
+      const contentData = JSON.parse(await data.text());
+      return contentData[dataType] || [];
+    } catch (error) {
+      console.error(`Error retrieving ${dataType} from storage:`, error);
+      return []; // Return empty array as fallback
     }
   }
 
@@ -180,104 +216,115 @@ export class ArticlesService {
     const result = { ...data };
     const warnings: string[] = [];
 
-    // Check if content should be moved to storage (either by content size or total payload size)
-    let shouldUseStorage = false;
-    let totalPayloadSize = 0;
+    // Generate article ID if not provided
+    if (!articleId) {
+      articleId = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID()
+        : `article_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
 
-    // First check: individual content size
+    // Calculate total payload size
+    const tempPayload = JSON.stringify(result);
+    const totalPayloadSize = tempPayload.length;
+    warnings.push(`Initial payload size: ${(totalPayloadSize / 1024).toFixed(2)} KB`);
+
+    // Check individual field sizes and move large ones to storage
+    const FIELD_SIZE_LIMIT = 100000; // 100KB per field
+
+    // Handle content
     if (result.content && result.content.length > this.STORAGE_THRESHOLD) {
-      shouldUseStorage = true;
-      warnings.push(`Content size (${result.content.length} chars) exceeds threshold`);
-    }
-
-    // Second check: total payload size
-    if (!shouldUseStorage) {
-      const tempPayload = JSON.stringify(result);
-      totalPayloadSize = tempPayload.length;
-      if (totalPayloadSize > this.TOTAL_PAYLOAD_LIMIT) {
-        shouldUseStorage = true;
-        warnings.push(`Total payload size (${totalPayloadSize} bytes) exceeds limit`);
-      }
-    }
-
-    // Move content to storage if needed
-    if (shouldUseStorage && result.content) {
-      if (!articleId) {
-        // Fallback for environments without crypto.randomUUID
-        articleId = typeof crypto !== 'undefined' && crypto.randomUUID 
-          ? crypto.randomUUID()
-          : `article_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      }
-      
       try {
-        // Store content in storage and replace with reference
         const storagePath = await this.storeContentInStorage(result.content, articleId);
         result.content = `[STORED_IN_STORAGE:${storagePath}]`;
         result.content_storage_path = storagePath;
         result.content_size = data.content.length;
-        warnings.push(`Content moved to storage: ${storagePath}`);
+        warnings.push(`Content moved to storage: ${storagePath} (${(data.content.length / 1024).toFixed(2)} KB)`);
       } catch (storageError) {
         console.error('Failed to store content in storage:', storageError);
-        // Smart fallback: try to break content into manageable chunks
-        if (result.content.length > 3000) {
-          warnings.push(`Storage failed, attempting smart content optimization`);
-          result.content = this.optimizeContentForDatabase(result.content);
-          warnings.push(`Content optimized to ${result.content.length} chars`);
-        } else {
-          // If content is already small but still causing issues, throw error
-          throw new Error(`Unable to save article: Storage system unavailable and content format incompatible. Please try again later.`);
+        throw new Error(`Unable to save article: Storage system error. Please try again.`);
+      }
+    }
+
+    // Handle sections - store in storage if too large
+    if (result.sections && Array.isArray(result.sections)) {
+      const sectionsSize = JSON.stringify(result.sections).length;
+      if (sectionsSize > FIELD_SIZE_LIMIT) {
+        try {
+          const storagePath = await this.storeLargeDataInStorage(result.sections, articleId, 'sections');
+          result.sections = `[STORED_IN_STORAGE:${storagePath}]`;
+          if (!result.sections_storage_path) {
+            result.sections_storage_path = storagePath;
+          }
+          warnings.push(`Sections moved to storage: ${storagePath} (${(sectionsSize / 1024).toFixed(2)} KB)`);
+        } catch (storageError) {
+          console.error('Failed to store sections in storage:', storageError);
+          // Fallback: reduce sections
+          warnings.push(`Storage failed for sections, reducing content`);
+          result.sections = result.sections.slice(0, 5).map((section: any) => ({
+            ...section,
+            content: section.content?.substring(0, 1000) || '',
+            media: section.media?.slice(0, 3) || [],
+            sources: section.sources?.slice(0, 5) || []
+          }));
         }
       }
     }
 
-    // Limit media items
-    if (result.media_items && Array.isArray(result.media_items) && result.media_items.length > this.MAX_MEDIA_ITEMS) {
-      warnings.push(`Media items reduced from ${result.media_items.length} to ${this.MAX_MEDIA_ITEMS}`);
-      result.media_items = result.media_items.slice(0, this.MAX_MEDIA_ITEMS);
-    }
-
-    // Limit sources
-    if (result.sources && Array.isArray(result.sources) && result.sources.length > this.MAX_SOURCES) {
-      warnings.push(`Sources reduced from ${result.sources.length} to ${this.MAX_SOURCES}`);
-      result.sources = result.sources.slice(0, this.MAX_SOURCES);
-    }
-
-    // Clean up media items
+    // Handle media_items - store in storage if too large
     if (result.media_items && Array.isArray(result.media_items)) {
-      result.media_items = result.media_items.map((item: any) => ({
-        id: item.id,
-        type: item.type,
-        url: item.url?.substring(0, 2000) || '',
-        name: item.name?.substring(0, 500) || '',
-        size: item.size
-      }));
+      const mediaSize = JSON.stringify(result.media_items).length;
+      if (mediaSize > FIELD_SIZE_LIMIT || result.media_items.length > this.MAX_MEDIA_ITEMS) {
+        try {
+          const storagePath = await this.storeLargeDataInStorage(result.media_items, articleId, 'media_items');
+          result.media_items = `[STORED_IN_STORAGE:${storagePath}]`;
+          if (!result.media_items_storage_path) {
+            result.media_items_storage_path = storagePath;
+          }
+          warnings.push(`Media items moved to storage: ${storagePath} (${(mediaSize / 1024).toFixed(2)} KB)`);
+        } catch (storageError) {
+          console.error('Failed to store media_items in storage:', storageError);
+          // Fallback: limit media items
+          warnings.push(`Storage failed for media, limiting to ${this.MAX_MEDIA_ITEMS} items`);
+          result.media_items = result.media_items.slice(0, this.MAX_MEDIA_ITEMS).map((item: any) => ({
+            id: item.id,
+            type: item.type,
+            url: item.url?.substring(0, 2000) || '',
+            name: item.name?.substring(0, 500) || '',
+            size: item.size
+          }));
+        }
+      }
     }
 
-    // Final safety check: ensure total payload is under limit
+    // Handle sources - store in storage if too large
+    if (result.sources && Array.isArray(result.sources)) {
+      const sourcesSize = JSON.stringify(result.sources).length;
+      if (sourcesSize > FIELD_SIZE_LIMIT || result.sources.length > this.MAX_SOURCES) {
+        try {
+          const storagePath = await this.storeLargeDataInStorage(result.sources, articleId, 'sources');
+          result.sources = `[STORED_IN_STORAGE:${storagePath}]`;
+          if (!result.sources_storage_path) {
+            result.sources_storage_path = storagePath;
+          }
+          warnings.push(`Sources moved to storage: ${storagePath} (${(sourcesSize / 1024).toFixed(2)} KB)`);
+        } catch (storageError) {
+          console.error('Failed to store sources in storage:', storageError);
+          // Fallback: limit sources
+          warnings.push(`Storage failed for sources, limiting to ${this.MAX_SOURCES} items`);
+          result.sources = result.sources.slice(0, this.MAX_SOURCES);
+        }
+      }
+    }
+
+    // Final payload check
     const finalPayload = JSON.stringify(result);
     const finalSize = finalPayload.length;
+    warnings.push(`Final payload size: ${(finalSize / 1024).toFixed(2)} KB`);
     
     if (finalSize > this.TOTAL_PAYLOAD_LIMIT) {
-      warnings.push(`Final payload still too large (${finalSize} bytes), performing emergency truncation`);
-      
-      // Emergency truncation of all string fields
-      if (result.content && !result.content.startsWith('[STORED_IN_STORAGE:')) {
-        result.content = result.content.substring(0, 500) + '\n[Emergency truncation applied]';
-      }
-      if (result.subtitle && result.subtitle.length > 200) {
-        result.subtitle = result.subtitle.substring(0, 200) + '...';
-      }
-      if (result.title && result.title.length > 100) {
-        result.title = result.title.substring(0, 100) + '...';
-      }
-      
-      // Reduce arrays if still too large
-      if (result.media_items && result.media_items.length > 5) {
-        result.media_items = result.media_items.slice(0, 5);
-      }
-      if (result.sources && result.sources.length > 10) {
-        result.sources = result.sources.slice(0, 10);
-      }
+      warnings.push(`Final payload still too large (${(finalSize / 1024).toFixed(2)} KB), please reduce content`);
+      // Instead of truncating, throw an error with helpful message
+      throw new Error(`Article is too large to save. Please reduce the number of sections, media items, or sources. Current size: ${(finalSize / 1024).toFixed(2)} KB, limit: ${(this.TOTAL_PAYLOAD_LIMIT / 1024).toFixed(2)} KB`);
     }
 
     if (warnings.length > 0) {
@@ -337,8 +384,13 @@ export class ArticlesService {
 
       const totalCount = articles.length > 0 ? articles[0].total_count : 0;
 
+      // Process articles to retrieve content from storage if needed
+      const processedArticles = await Promise.all(
+        articles.map((article: any) => this.processArticleContent(article))
+      );
+
       return {
-        articles,
+        articles: processedArticles,
         totalCount,
         hasMore: (offset + pageSize) < totalCount,
       };
@@ -402,6 +454,39 @@ export class ArticlesService {
       }
     }
     
+    // If sections are stored in storage, retrieve them
+    if (typeof data?.sections === 'string' && data.sections.startsWith('[STORED_IN_STORAGE:')) {
+      const storagePath = data.sections.replace('[STORED_IN_STORAGE:', '').replace(']', '');
+      try {
+        data.sections = await this.getLargeDataFromStorage(storagePath, 'sections');
+      } catch (storageError) {
+        console.error('Error retrieving sections from storage:', storageError);
+        data.sections = [];
+      }
+    }
+    
+    // If media_items are stored in storage, retrieve them
+    if (typeof data?.media_items === 'string' && data.media_items.startsWith('[STORED_IN_STORAGE:')) {
+      const storagePath = data.media_items.replace('[STORED_IN_STORAGE:', '').replace(']', '');
+      try {
+        data.media_items = await this.getLargeDataFromStorage(storagePath, 'media_items');
+      } catch (storageError) {
+        console.error('Error retrieving media_items from storage:', storageError);
+        data.media_items = [];
+      }
+    }
+    
+    // If sources are stored in storage, retrieve them
+    if (typeof data?.sources === 'string' && data.sources.startsWith('[STORED_IN_STORAGE:')) {
+      const storagePath = data.sources.replace('[STORED_IN_STORAGE:', '').replace(']', '');
+      try {
+        data.sources = await this.getLargeDataFromStorage(storagePath, 'sources');
+      } catch (storageError) {
+        console.error('Error retrieving sources from storage:', storageError);
+        data.sources = [];
+      }
+    }
+    
     return data;
   }
 
@@ -440,6 +525,9 @@ export class ArticlesService {
         // Only include hybrid storage fields if they exist
         ...(validatedData.content_storage_path && { content_storage_path: validatedData.content_storage_path }),
         ...(validatedData.content_size && { content_size: validatedData.content_size }),
+        ...(validatedData.sections_storage_path && { sections_storage_path: validatedData.sections_storage_path }),
+        ...(validatedData.media_items_storage_path && { media_items_storage_path: validatedData.media_items_storage_path }),
+        ...(validatedData.sources_storage_path && { sources_storage_path: validatedData.sources_storage_path }),
       };
 
       // Enhanced debug logging
@@ -554,10 +642,10 @@ export class ArticlesService {
 
   async deleteArticle(id: string) {
     try {
-      // First, check if article has content stored in storage
+      // First, check if article has any content stored in storage
       const { data: article, error: fetchError } = await this.supabase
         .from('articles')
-        .select('content_storage_path')
+        .select('content_storage_path, sections_storage_path, media_items_storage_path, sources_storage_path')
         .eq('id', id)
         .single();
 
@@ -573,14 +661,29 @@ export class ArticlesService {
 
       if (error) throw error;
 
-      // Clean up storage content if exists
+      // Clean up all storage files if they exist
+      const storagePathsToDelete = [];
+      
       if (article?.content_storage_path) {
+        storagePathsToDelete.push(article.content_storage_path);
+      }
+      if (article?.sections_storage_path) {
+        storagePathsToDelete.push(article.sections_storage_path);
+      }
+      if (article?.media_items_storage_path) {
+        storagePathsToDelete.push(article.media_items_storage_path);
+      }
+      if (article?.sources_storage_path) {
+        storagePathsToDelete.push(article.sources_storage_path);
+      }
+
+      if (storagePathsToDelete.length > 0) {
         try {
           await this.supabase.storage
             .from('articles-media')
-            .remove([article.content_storage_path]);
+            .remove(storagePathsToDelete);
         } catch (storageError) {
-          console.warn('Could not delete storage content:', storageError);
+          console.warn('Could not delete some storage files:', storageError);
           // Don't fail the entire operation if storage cleanup fails
         }
       }
