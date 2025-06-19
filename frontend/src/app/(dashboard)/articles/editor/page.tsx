@@ -56,6 +56,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/components/AuthProvider';
 
 interface MediaItem {
   id: string;
@@ -94,6 +95,7 @@ export default function ArticleEditor() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const articleId = searchParams.get('id');
+  const { user } = useAuth();
   
   // State
   const [title, setTitle] = useState('');
@@ -130,6 +132,18 @@ export default function ArticleEditor() {
   const updateArticleMutation = useUpdateArticle();
 
   const isEditing = !!articleId;
+
+  // Auto-populate author name when user is available
+  useEffect(() => {
+    if (user && !author && !isEditing) {
+      // Get user's display name from metadata or fallback to email
+      const displayName = user.user_metadata?.full_name || 
+                         user.user_metadata?.name || 
+                         user.email?.split('@')[0] || 
+                         'Anonymous';
+      setAuthor(displayName);
+    }
+  }, [user, author, isEditing]);
 
   // Load existing article data when editing
   useEffect(() => {
@@ -1018,6 +1032,7 @@ export default function ArticleEditor() {
                     placeholder="Author name"
                     value={author}
                     onChange={(e) => setAuthor(e.target.value)}
+                    disabled={!isEditing} // Disable editing for new articles since it's auto-populated
                   />
                 </div>
 

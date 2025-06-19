@@ -5,7 +5,12 @@ type Tables = Database['public']['Tables'];
 type Article = Tables['articles']['Row'] & {
   saved?: boolean; // Add saved field until Supabase types are regenerated
 };
-type ArticleInsert = Tables['articles']['Insert'];
+type ArticleInsert = Tables['articles']['Insert'] & {
+  // Add Basejump fields that might not be in the generated types yet
+  account_id?: string;
+  created_by_user_id?: string;
+  visibility?: string;
+};
 type ArticleUpdate = Tables['articles']['Update'];
 
 interface ArticleSection {
@@ -497,6 +502,13 @@ export class ArticlesService {
       const { data: user } = await this.supabase.auth.getUser();
       if (!user.user) throw new Error('User not authenticated');
 
+      // Get user's personal account (required for Basejump integration)
+      const { data: personalAccount, error: accountError } = await this.supabase.rpc('get_personal_account');
+      if (accountError || !personalAccount) {
+        console.error('Error getting personal account:', accountError);
+        throw new Error('Failed to get user account information');
+      }
+
       // Pre-generate article ID for storage operations
       const articleId = typeof crypto !== 'undefined' && crypto.randomUUID 
         ? crypto.randomUUID()
@@ -504,6 +516,9 @@ export class ArticlesService {
 
       // Validate payload size before sending  
       const validatedData = await this.validatePayloadSize(articleData, articleId);
+
+      // Determine visibility based on status
+      const visibility = validatedData.status === 'published' ? 'public' : 'account';
 
       // Clean the data to only include fields that exist in the database
       const insertData: ArticleInsert = {
@@ -520,7 +535,10 @@ export class ArticlesService {
         sections: validatedData.sections || [],
         read_time: validatedData.read_time,
         image_url: validatedData.image_url,
-        user_id: user.user.id,
+        user_id: user.user.id, // Keep for backward compatibility
+        account_id: personalAccount.account_id, // Required for Basejump
+        created_by_user_id: user.user.id, // Required for Basejump
+        visibility: visibility, // Required for Basejump
         publish_date: validatedData.status === 'published' 
           ? (validatedData.publish_date ? new Date(validatedData.publish_date).toISOString() : new Date().toISOString())
           : null,
@@ -535,6 +553,10 @@ export class ArticlesService {
       // Enhanced debug logging
       console.log('=== CREATE ARTICLE DEBUG ===');
       console.log('Article ID:', articleId);
+      console.log('User ID:', user.user.id);
+      console.log('Account ID:', personalAccount.account_id);
+      console.log('Visibility:', visibility);
+      console.log('Status:', validatedData.status);
       console.log('Original content length:', articleData.content?.length || 0);
       console.log('Final content length:', validatedData.content?.length || 0);
       console.log('Storage path:', validatedData.content_storage_path);
@@ -610,14 +632,22 @@ export class ArticlesService {
       console.log('Sources count:', validatedData.sources?.length || 0);
       console.log('Sections count:', validatedData.sections?.length || 0);
 
+      // Determine visibility based on status if it's being changed
+      const updatePayload = {
+        ...validatedData,
+        publish_date: validatedData.status === 'published' 
+          ? (validatedData.publish_date ? new Date(validatedData.publish_date).toISOString() : new Date().toISOString())
+          : null,
+      };
+
+      // Update visibility if status is being changed
+      if (validatedData.status) {
+        updatePayload.visibility = validatedData.status === 'published' ? 'public' : 'account';
+      }
+
       const { data, error } = await this.supabase
         .from('articles')
-        .update({
-          ...validatedData,
-          publish_date: validatedData.status === 'published' 
-            ? (validatedData.publish_date ? new Date(validatedData.publish_date).toISOString() : new Date().toISOString())
-            : null,
-        })
+        .update(updatePayload)
         .eq('id', id)
         .select()
         .single();

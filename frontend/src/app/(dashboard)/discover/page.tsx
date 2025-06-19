@@ -59,13 +59,7 @@ const chunkContent = (content: ContentItem[]) => {
 export default function DiscoverPage() {
   // Tab state
   const [activeTab, setActiveTab] = useState<TabCategory>('for-you');
-  
-  // Consolidated state for better performance
-  const [displayState, setDisplayState] = useState({
-    shownArticles: [] as ContentItem[],
-    currentCycle: 0,
-    isLoadingMore: false
-  });
+  const [currentCycle, setCurrentCycle] = useState(0);
   
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -107,107 +101,26 @@ export default function DiscoverPage() {
   // Handle tab changes
   const handleTabChange = useCallback((tab: TabCategory) => {
     setActiveTab(tab);
-    // Reset display state when switching tabs
-    setDisplayState({
-      shownArticles: [],
-      currentCycle: 0,
-      isLoadingMore: false
-    });
+    setCurrentCycle(0); // Reset cycle when switching tabs
   }, []);
 
-  // Handle voting on articles
+  // Handle voting on articles - NO local state management, rely on React Query
   const handleVote = useCallback(async (articleId: string, voteType: 'upvote' | 'downvote') => {
     try {
-      // Optimistic update
-      setDisplayState(prev => ({
-        ...prev,
-        shownArticles: prev.shownArticles.map(item => {
-          if (item.id === articleId) {
-            const wasUpvoted = item.user_vote === 'upvote';
-            const wasDownvoted = item.user_vote === 'downvote';
-            const isTogglingOff = item.user_vote === voteType;
-            
-            let newUpvotes = item.upvotes || 0;
-            let newDownvotes = item.downvotes || 0;
-            let newUserVote: 'upvote' | 'downvote' | null = null;
-            
-            if (isTogglingOff) {
-              // Removing vote
-              if (voteType === 'upvote') newUpvotes--;
-              else newDownvotes--;
-              newUserVote = null;
-            } else {
-              // Adding or changing vote
-              if (voteType === 'upvote') {
-                if (wasDownvoted) newDownvotes--;
-                newUpvotes++;
-                newUserVote = 'upvote';
-              } else {
-                if (wasUpvoted) newUpvotes--;
-                newDownvotes++;
-                newUserVote = 'downvote';
-              }
-            }
-            
-            return {
-              ...item,
-              upvotes: newUpvotes,
-              downvotes: newDownvotes,
-              vote_score: newUpvotes - newDownvotes,
-              user_vote: newUserVote
-            };
-          }
-          return item;
-        })
-      }));
-
-      // Call the real API
       await voteOnArticleMutation.mutateAsync({ 
         articleId, 
         voteType 
       });
-      
     } catch (error) {
-      // Revert optimistic update on error
       console.error('Failed to vote:', error);
-      setDisplayState(prev => ({
-        ...prev,
-        shownArticles: prev.shownArticles.map(item => {
-          if (item.id === articleId) {
-            // Revert to original state - this is a simplified revert
-            // In a real app, you'd store the original state
-            return item;
-          }
-          return item;
-        })
-      }));
     }
   }, [voteOnArticleMutation]);
 
-  // Optimized save handler with optimistic updates
+  // Handle save toggle - NO local state management, rely on React Query
   const handleSaveToggle = useCallback(async (contentId: string) => {
-    // Immediate optimistic update
-    setDisplayState(prev => ({
-      ...prev,
-      shownArticles: prev.shownArticles.map(item => 
-        item.id === contentId 
-          ? { ...item, saved: !item.saved, bookmarked: !item.saved }
-          : item
-      )
-    }));
-
     try {
       await saveArticleMutation.mutateAsync(contentId);
     } catch (error) {
-      // Revert on error
-      setDisplayState(prev => ({
-        ...prev,
-        shownArticles: prev.shownArticles.map(item => 
-          item.id === contentId 
-            ? { ...item, saved: !item.saved, bookmarked: !item.saved }
-            : item
-        )
-      }));
       console.error('Failed to save article:', error);
     }
   }, [saveArticleMutation]);
@@ -220,34 +133,24 @@ export default function DiscoverPage() {
     }
   }, [incrementViewsMutation]);
 
-  // Optimized load more function with debouncing
+  // Load more content function
   const loadMoreContent = useCallback(async () => {
-    if (displayState.isLoadingMore || isLoading || isFetchingNextPage) return;
-
-    setDisplayState(prev => ({ ...prev, isLoadingMore: true }));
+    if (isLoading || isFetchingNextPage) return;
 
     try {
       // If we have more pages to fetch, fetch them
       if (hasNextPage) {
         await fetchNextPage();
       } else if (filteredArticles.length > 0) {
-        // Restart cycle with batch loading from filtered articles
-        const articlesToAdd = filteredArticles.slice(0, 4);
-        if (articlesToAdd.length > 0) {
-          setDisplayState(prev => ({
-            shownArticles: [...prev.shownArticles, ...articlesToAdd],
-            currentCycle: prev.currentCycle + 1,
-            isLoadingMore: false
-          }));
-          return;
-        }
+        // Restart cycle - just increment the cycle counter
+        setCurrentCycle(prev => prev + 1);
       }
-    } finally {
-      setDisplayState(prev => ({ ...prev, isLoadingMore: false }));
+    } catch (error) {
+      console.error('Failed to load more content:', error);
     }
-  }, [displayState.isLoadingMore, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, filteredArticles]);
+  }, [isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, filteredArticles.length]);
 
-  // Optimized intersection observer setup
+  // Intersection observer setup
   useEffect(() => {
     const createObserver = () => {
       if (observerRef.current) {
@@ -256,7 +159,7 @@ export default function DiscoverPage() {
 
       observerRef.current = new IntersectionObserver(
         (entries) => {
-          if (entries[0].isIntersecting && !displayState.isLoadingMore) {
+          if (entries[0].isIntersecting) {
             loadMoreContent();
           }
         },
@@ -278,50 +181,34 @@ export default function DiscoverPage() {
         observerRef.current.disconnect();
       }
     };
-  }, [loadMoreContent, displayState.isLoadingMore]);
+  }, [loadMoreContent]);
 
-  // Optimized initial load and data updates based on filtered articles
-  useEffect(() => {
-    if (filteredArticles.length > 0) {
-      setDisplayState(prev => {
-        // Initial load for the current tab
-        if (prev.shownArticles.length === 0) {
-          return {
-            ...prev,
-            shownArticles: filteredArticles.slice(0, 4)
-          };
-        }
-
-        // Add new articles when they arrive
-        const currentlyShown = prev.shownArticles.length;
-        const cycleSize = 4;
-        const expectedArticles = Math.ceil(currentlyShown / cycleSize) * cycleSize;
-        
-        if (filteredArticles.length > expectedArticles) {
-          const newArticles = filteredArticles.slice(currentlyShown, currentlyShown + cycleSize);
-          if (newArticles.length > 0) {
-            return {
-              ...prev,
-              shownArticles: [...prev.shownArticles, ...newArticles]
-            };
-          }
-        }
-
-        return prev;
-      });
+  // Calculate how many articles to show based on cycles
+  const articlesToShow = useMemo(() => {
+    const baseArticles = Math.min(12, filteredArticles.length); // Show first 12 articles initially
+    const cycleArticles = currentCycle * 4; // Each cycle adds 4 more articles
+    const totalToShow = baseArticles + cycleArticles;
+    
+    // If we've shown all articles, restart from beginning with cycle indicator
+    if (totalToShow >= filteredArticles.length && filteredArticles.length > 0) {
+      const cycleSize = Math.min(12, filteredArticles.length);
+      const currentCycleArticles = ((currentCycle - 1) * 4) % filteredArticles.length;
+      return filteredArticles.slice(0, Math.min(cycleSize + currentCycleArticles, filteredArticles.length));
     }
-  }, [filteredArticles]);
+    
+    return filteredArticles.slice(0, totalToShow);
+  }, [filteredArticles, currentCycle]);
 
   // Memoized chunked content
   const chunkedContent = useMemo(() => 
-    chunkContent(displayState.shownArticles), 
-    [displayState.shownArticles]
+    chunkContent(articlesToShow), 
+    [articlesToShow]
   );
 
   // Memoized loading states
-  const isInitialLoading = isLoading && displayState.shownArticles.length === 0;
-  const isLoadingMoreContent = (isFetchingNextPage || displayState.isLoadingMore) && displayState.shownArticles.length > 0;
-  const showCycleIndicator = !hasNextPage && filteredArticles.length > 0 && displayState.currentCycle > 0;
+  const isInitialLoading = isLoading && filteredArticles.length === 0;
+  const isLoadingMoreContent = isFetchingNextPage && filteredArticles.length > 0;
+  const showCycleIndicator = !hasNextPage && filteredArticles.length > 0 && currentCycle > 0;
 
   return (
     <>
@@ -333,7 +220,7 @@ export default function DiscoverPage() {
               <div className="flex justify-center items-center py-12">
                 <div className="w-8 h-8 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
               </div>
-            ) : displayState.shownArticles.length === 0 ? (
+            ) : articlesToShow.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <h2 className="text-2xl font-bold mb-4">
                   {activeTab === 'for-you' ? 'No Articles Available' : 
@@ -389,7 +276,7 @@ export default function DiscoverPage() {
             {showCycleIndicator && process.env.NODE_ENV === 'development' && (
               <div className="flex justify-center items-center py-6">
                 <div className="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                  Showing articles again • Cycle {displayState.currentCycle + 1}
+                  Showing articles again • Cycle {currentCycle + 1}
                 </div>
               </div>
             )}

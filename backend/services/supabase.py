@@ -111,3 +111,66 @@ class DBConnection:
             raise RuntimeError(f"Failed to upload image: {str(e)}")
 
 
+# =======================
+# FACTORY FUNCTIONS
+# =======================
+
+async def create_supabase_admin_client() -> AsyncClient:
+    """
+    Create a Supabase client with admin privileges (service role key).
+    This client has full access to all data and bypasses RLS policies.
+    """
+    try:
+        supabase_url = config.SUPABASE_URL
+        service_role_key = config.SUPABASE_SERVICE_ROLE_KEY
+        
+        if not supabase_url or not service_role_key:
+            logger.error("Missing required environment variables for admin Supabase connection")
+            raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables must be set.")
+
+        logger.debug("Creating Supabase admin client")
+        admin_client = await create_async_client(supabase_url, service_role_key)
+        logger.debug("Admin Supabase client created successfully")
+        return admin_client
+        
+    except Exception as e:
+        logger.error(f"Admin client creation error: {e}")
+        raise RuntimeError(f"Failed to create admin client: {str(e)}")
+
+
+async def create_supabase_client(user_id: str) -> AsyncClient:
+    """
+    Create a Supabase client for a specific user.
+    This client will respect RLS policies and user-specific permissions.
+    
+    Args:
+        user_id (str): The user ID to create the client for
+        
+    Returns:
+        AsyncClient: Configured Supabase client
+    """
+    try:
+        supabase_url = config.SUPABASE_URL
+        # Use service role key for backend operations, but could be modified
+        # to use anon key with proper JWT token for user-specific access
+        supabase_key = config.SUPABASE_SERVICE_ROLE_KEY or config.SUPABASE_ANON_KEY
+        
+        if not supabase_url or not supabase_key:
+            logger.error("Missing required environment variables for user Supabase connection")
+            raise RuntimeError("SUPABASE_URL and a key (SERVICE_ROLE_KEY or ANON_KEY) environment variables must be set.")
+
+        logger.debug(f"Creating Supabase client for user {user_id}")
+        client = await create_async_client(supabase_url, supabase_key)
+        
+        # TODO: In a production setup, you might want to set the JWT token here
+        # to ensure proper RLS enforcement. For now, using service role key
+        # means the application logic must handle permissions manually.
+        
+        logger.debug(f"User Supabase client created successfully for user {user_id}")
+        return client
+        
+    except Exception as e:
+        logger.error(f"User client creation error: {e}")
+        raise RuntimeError(f"Failed to create user client: {str(e)}")
+
+

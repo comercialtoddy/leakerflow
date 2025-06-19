@@ -144,6 +144,10 @@ app.include_router(transcription_api.router, prefix="/api")
 
 app.include_router(email_api.router, prefix="/api")
 
+from services import articles_api
+
+app.include_router(articles_api.router, prefix="/api")
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint to verify API is working."""

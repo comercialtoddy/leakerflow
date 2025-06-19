@@ -331,10 +331,15 @@ export function useSaveArticle() {
   return useMutation({
     mutationFn: (id: string) => articlesService.saveArticle(id),
     onMutate: async (id) => {
+      // Cancel outgoing queries for this article
       await queryClient.cancelQueries({ queryKey: articlesKeys.detail(id) });
+      await queryClient.cancelQueries({ queryKey: articlesKeys.lists() });
 
+      // Snapshot previous values
       const previousArticle = queryClient.getQueryData(articlesKeys.detail(id));
+      const previousLists = queryClient.getQueriesData({ queryKey: articlesKeys.lists() });
 
+      // Optimistically update the detail
       queryClient.setQueryData(articlesKeys.detail(id), (old: any) => {
         if (old) {
           return {
@@ -346,9 +351,9 @@ export function useSaveArticle() {
         return old;
       });
 
-      // Also update in lists
+      // Optimistically update all list queries
       queryClient.setQueriesData({ queryKey: articlesKeys.lists() }, (old: any) => {
-        if (!old) return old;
+        if (!old || !old.pages) return old;
         
         return {
           ...old,
@@ -358,20 +363,25 @@ export function useSaveArticle() {
               article.id === id 
                 ? { ...article, saved: !article.saved, bookmarked: !article.bookmarked }
                 : article
-            )
+            ) || []
           }))
         };
       });
 
-      return { previousArticle, id };
+      return { previousArticle, previousLists, id };
     },
     onError: (err, id, context) => {
+      // Revert detail update
       if (context?.previousArticle) {
         queryClient.setQueryData(articlesKeys.detail(context.id), context.previousArticle);
       }
       
       // Revert list updates
-      queryClient.invalidateQueries({ queryKey: articlesKeys.lists() });
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
       
       toast.error('Failed to save article');
     },
@@ -379,6 +389,7 @@ export function useSaveArticle() {
       toast.success(saved ? 'Article saved' : 'Save removed');
     },
     onSettled: (_, __, id) => {
+      // Always refresh data to ensure consistency
       queryClient.invalidateQueries({ queryKey: articlesKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: articlesKeys.lists() });
       queryClient.invalidateQueries({ queryKey: articlesKeys.dashboardStats() });
@@ -404,15 +415,132 @@ export function useShareArticle() {
   });
 }
 
-// Vote on article
+// Vote on article with optimistic updates
 export function useVoteOnArticle() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ articleId, voteType }: { articleId: string; voteType: 'upvote' | 'downvote' }) => 
       articlesService.voteOnArticle(articleId, voteType),
+    onMutate: async ({ articleId, voteType }) => {
+      // Cancel outgoing queries
+      await queryClient.cancelQueries({ queryKey: articlesKeys.detail(articleId) });
+      await queryClient.cancelQueries({ queryKey: articlesKeys.lists() });
+
+      // Snapshot previous values
+      const previousArticle = queryClient.getQueryData(articlesKeys.detail(articleId));
+      const previousLists = queryClient.getQueriesData({ queryKey: articlesKeys.lists() });
+
+      // Optimistically update the detail
+      queryClient.setQueryData(articlesKeys.detail(articleId), (old: any) => {
+        if (old) {
+          const wasUpvoted = old.user_vote === 'upvote';
+          const wasDownvoted = old.user_vote === 'downvote';
+          const isTogglingOff = old.user_vote === voteType;
+          
+          let newUpvotes = old.upvotes || 0;
+          let newDownvotes = old.downvotes || 0;
+          let newUserVote: 'upvote' | 'downvote' | null = null;
+          
+          if (isTogglingOff) {
+            // Removing vote
+            if (voteType === 'upvote') newUpvotes--;
+            else newDownvotes--;
+            newUserVote = null;
+          } else {
+            // Adding or changing vote
+            if (voteType === 'upvote') {
+              if (wasDownvoted) newDownvotes--;
+              newUpvotes++;
+              newUserVote = 'upvote';
+            } else {
+              if (wasUpvoted) newUpvotes--;
+              newDownvotes++;
+              newUserVote = 'downvote';
+            }
+          }
+          
+          return {
+            ...old,
+            upvotes: newUpvotes,
+            downvotes: newDownvotes,
+            vote_score: newUpvotes - newDownvotes,
+            user_vote: newUserVote
+          };
+        }
+        return old;
+      });
+
+      // Optimistically update all list queries
+      queryClient.setQueriesData({ queryKey: articlesKeys.lists() }, (old: any) => {
+        if (!old || !old.pages) return old;
+        
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            articles: page.articles?.map((article: any) => {
+              if (article.id === articleId) {
+                const wasUpvoted = article.user_vote === 'upvote';
+                const wasDownvoted = article.user_vote === 'downvote';
+                const isTogglingOff = article.user_vote === voteType;
+                
+                let newUpvotes = article.upvotes || 0;
+                let newDownvotes = article.downvotes || 0;
+                let newUserVote: 'upvote' | 'downvote' | null = null;
+                
+                if (isTogglingOff) {
+                  // Removing vote
+                  if (voteType === 'upvote') newUpvotes--;
+                  else newDownvotes--;
+                  newUserVote = null;
+                } else {
+                  // Adding or changing vote
+                  if (voteType === 'upvote') {
+                    if (wasDownvoted) newDownvotes--;
+                    newUpvotes++;
+                    newUserVote = 'upvote';
+                  } else {
+                    if (wasUpvoted) newUpvotes--;
+                    newDownvotes++;
+                    newUserVote = 'downvote';
+                  }
+                }
+                
+                return {
+                  ...article,
+                  upvotes: newUpvotes,
+                  downvotes: newDownvotes,
+                  vote_score: newUpvotes - newDownvotes,
+                  user_vote: newUserVote
+                };
+              }
+              return article;
+            }) || []
+          }))
+        };
+      });
+
+      return { previousArticle, previousLists, articleId };
+    },
+    onError: (error: any, variables, context) => {
+      // Revert detail update
+      if (context?.previousArticle) {
+        queryClient.setQueryData(articlesKeys.detail(context.articleId), context.previousArticle);
+      }
+      
+      // Revert list updates
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      
+      console.error('Failed to vote on article:', error);
+      toast.error('Failed to vote on article');
+    },
     onSuccess: (voteResult, { articleId }) => {
-      // Update the article in the cache with the new vote data
+      // Update with actual server response to ensure consistency
       queryClient.setQueryData(articlesKeys.detail(articleId), (old: any) => {
         if (old) {
           return {
@@ -425,13 +553,12 @@ export function useVoteOnArticle() {
         }
         return old;
       });
-
-      // Invalidate articles lists to refresh vote counts
-      queryClient.invalidateQueries({ queryKey: articlesKeys.lists() });
     },
-    onError: (error: any) => {
-      console.error('Failed to vote on article:', error);
-      toast.error('Failed to vote on article');
+    onSettled: (_, __, { articleId }) => {
+      // Always refresh data to ensure consistency
+      queryClient.invalidateQueries({ queryKey: articlesKeys.detail(articleId) });
+      queryClient.invalidateQueries({ queryKey: articlesKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: articlesKeys.dashboardStats() });
     },
   });
 }
