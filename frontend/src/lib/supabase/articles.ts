@@ -391,9 +391,34 @@ export class ArticlesService {
 
       const totalCount = articles.length > 0 ? articles[0].total_count : 0;
 
-      // Process articles to retrieve content from storage if needed
+      // Check saved status for all articles in one query
+      let savedArticleIds: string[] = [];
+      try {
+        const { data: user } = await this.supabase.auth.getUser();
+        if (user.user && articles.length > 0) {
+          const articleIds = articles.map((a: any) => a.id);
+          const { data: savedArticles } = await this.supabase
+            .from('saved_articles')
+            .select('article_id')
+            .eq('user_id', user.user.id)
+            .in('article_id', articleIds);
+          
+          savedArticleIds = savedArticles?.map(s => s.article_id) || [];
+        }
+      } catch (savedError) {
+        console.warn('Could not check saved status:', savedError);
+      }
+
+      // Process articles and update saved status
       const processedArticles = await Promise.all(
-        articles.map((article: any) => this.processArticleContent(article))
+        articles.map(async (article: any) => {
+          // Update saved status based on our query
+          const isSaved = savedArticleIds.includes(article.id);
+          article.saved = isSaved;
+          article.bookmarked = isSaved; // Keep both in sync
+          
+          return this.processArticleContent(article);
+        })
       );
 
       return {
@@ -420,7 +445,7 @@ export class ArticlesService {
       if (error) throw error;
 
       // Find the specific article by ID
-      const article = data?.find((a: any) => a.id === id);
+      let article = data?.find((a: any) => a.id === id);
       
       if (!article) {
         // Fallback to direct query if not found in paginated results
@@ -437,7 +462,29 @@ export class ArticlesService {
           fallbackData.user_vote = await this.getUserVote(id);
         }
         
-        return this.processArticleContent(fallbackData);
+        article = fallbackData;
+      }
+
+      // Check if user has saved this article using the saved_articles table
+      if (article) {
+        try {
+          const { data: user } = await this.supabase.auth.getUser();
+          if (user.user) {
+            const { data: savedCheck } = await this.supabase
+              .from('saved_articles')
+              .select('id')
+              .eq('article_id', id)
+              .eq('user_id', user.user.id)
+              .single();
+            
+            // Update the saved status based on saved_articles table
+            article.saved = !!savedCheck;
+            article.bookmarked = !!savedCheck; // Keep both in sync
+          }
+        } catch (savedError) {
+          // If saved_articles table doesn't exist or error, keep original value
+          console.warn('Could not check saved status:', savedError);
+        }
       }
 
       return this.processArticleContent(article);
@@ -1313,34 +1360,48 @@ export class ArticlesService {
   // Save article (new method that tracks save event)
   async saveArticle(id: string) {
     try {
-      // Try the new save function first
-      const { data, error } = await this.supabase.rpc('toggle_article_save', {
-        article_id: id
-      });
+      const { data: user } = await this.supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
 
-      if (error) {
-        // If the new function doesn't exist, fallback to bookmark
-        if (error.code === 'PGRST202' && error.message.includes('toggle_article_save')) {
-          console.warn('toggle_article_save not found, falling back to toggle_article_bookmark');
-          
-          const { data: bookmarkData, error: bookmarkError } = await this.supabase.rpc('toggle_article_bookmark', {
-            article_id: id
+      // Check if article is currently saved
+      const { data: currentSave } = await this.supabase
+        .from('saved_articles')
+        .select('id')
+        .eq('article_id', id)
+        .eq('user_id', user.user.id)
+        .single();
+
+      if (currentSave) {
+        // Remove save
+        const { error } = await this.supabase
+          .from('saved_articles')
+          .delete()
+          .eq('article_id', id)
+          .eq('user_id', user.user.id);
+        
+        if (error) throw error;
+        return false;
+      } else {
+        // Add save
+        const { error } = await this.supabase
+          .from('saved_articles')
+          .insert({
+            article_id: id,
+            user_id: user.user.id
           });
-          
-          if (bookmarkError) throw bookmarkError;
-          
-          // Track save event if article was saved
-          if (bookmarkData) {
-            await this.trackEvent(id, 'save');
-          }
-          
-          return bookmarkData;
+        
+        if (error) throw error;
+        
+        // Track save event
+        try {
+          await this.trackEvent(id, 'save');
+        } catch (trackError) {
+          console.warn('Failed to track save event:', trackError);
+          // Don't fail the save operation if tracking fails
         }
-        throw error;
+        
+        return true;
       }
-      
-      // The RPC function already tracks the save event when saving
-      return data;
     } catch (error) {
       console.error('Error saving article:', error);
       throw error;

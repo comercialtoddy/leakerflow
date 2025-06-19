@@ -339,13 +339,18 @@ export function useSaveArticle() {
       const previousArticle = queryClient.getQueryData(articlesKeys.detail(id));
       const previousLists = queryClient.getQueriesData({ queryKey: articlesKeys.lists() });
 
+      // Get current saved state
+      const currentSaved = (previousArticle as any)?.saved || (previousArticle as any)?.bookmarked || false;
+
       // Optimistically update the detail
       queryClient.setQueryData(articlesKeys.detail(id), (old: any) => {
         if (old) {
+          const newSavedState = !currentSaved;
           return {
             ...old,
-            saved: !old.saved,
-            bookmarked: !old.bookmarked, // Also update bookmarked for compatibility
+            saved: newSavedState,
+            bookmarked: newSavedState, // Keep both in sync for compatibility
+            total_saves: Math.max(0, (old.total_saves || 0) + (newSavedState ? 1 : -1))
           };
         }
         return old;
@@ -359,11 +364,19 @@ export function useSaveArticle() {
           ...old,
           pages: old.pages.map((page: any) => ({
             ...page,
-            articles: page.articles?.map((article: any) => 
-              article.id === id 
-                ? { ...article, saved: !article.saved, bookmarked: !article.bookmarked }
-                : article
-            ) || []
+            articles: page.articles?.map((article: any) => {
+              if (article.id === id) {
+                const currentSaved = article.saved || article.bookmarked || false;
+                const newSavedState = !currentSaved;
+                return { 
+                  ...article, 
+                  saved: newSavedState, 
+                  bookmarked: newSavedState,
+                  total_saves: Math.max(0, (article.total_saves || 0) + (newSavedState ? 1 : -1))
+                };
+              }
+              return article;
+            }) || []
           }))
         };
       });
@@ -385,11 +398,23 @@ export function useSaveArticle() {
       
       toast.error('Failed to save article');
     },
-    onSuccess: (saved) => {
+    onSuccess: (saved, id) => {
+      // Update with actual server response
+      queryClient.setQueryData(articlesKeys.detail(id), (old: any) => {
+        if (old) {
+          return {
+            ...old,
+            saved: saved,
+            bookmarked: saved, // Keep both in sync
+          };
+        }
+        return old;
+      });
+      
       toast.success(saved ? 'Article saved' : 'Save removed');
     },
     onSettled: (_, __, id) => {
-      // Always refresh data to ensure consistency
+      // Refresh data to ensure consistency
       queryClient.invalidateQueries({ queryKey: articlesKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: articlesKeys.lists() });
       queryClient.invalidateQueries({ queryKey: articlesKeys.dashboardStats() });

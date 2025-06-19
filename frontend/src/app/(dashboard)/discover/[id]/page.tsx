@@ -36,7 +36,7 @@ export default function ArticlePage() {
   useAutoTrackView(articleId, !isLoading && !!article);
 
   const handleSaveToggle = async () => {
-    if (article) {
+    if (article && !saveArticleMutation.isPending) {
       try {
         await saveArticleMutation.mutateAsync(articleId);
       } catch (error) {
@@ -167,18 +167,27 @@ export default function ArticlePage() {
                   size="sm"
                   disabled={saveArticleMutation.isPending}
                   className={cn(
-                    article.saved || article.bookmarked
-                      ? "text-primary border-primary/20 bg-primary/5" 
-                      : "text-muted-foreground"
+                    (article.saved || article.bookmarked)
+                      ? "text-primary border-primary/20 bg-primary/5 hover:bg-primary/10" 
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <Bookmark 
-                    className={cn(
-                      "h-4 w-4 mr-2",
-                      (article.saved || article.bookmarked) && "fill-current"
-                    )} 
-                  />
-                  {article.saved || article.bookmarked ? 'Saved' : 'Save'}
+                  {saveArticleMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Bookmark 
+                      className={cn(
+                        "h-4 w-4 mr-2",
+                        (article.saved || article.bookmarked) && "fill-current"
+                      )} 
+                    />
+                  )}
+                  {saveArticleMutation.isPending 
+                    ? 'Saving...' 
+                    : (article.saved || article.bookmarked) 
+                      ? 'Saved' 
+                      : 'Save'
+                  }
                 </Button>
                 
                 <Button onClick={handleShare} variant="outline" size="sm">
@@ -371,18 +380,27 @@ export default function ArticlePage() {
                   variant="outline"
                   disabled={saveArticleMutation.isPending}
                   className={cn(
-                    article.saved || article.bookmarked
-                      ? "text-primary border-primary/20 bg-primary/5" 
-                      : "text-muted-foreground"
+                    (article.saved || article.bookmarked)
+                      ? "text-primary border-primary/20 bg-primary/5 hover:bg-primary/10" 
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <Bookmark 
-                    className={cn(
-                      "h-4 w-4 mr-2",
-                      (article.saved || article.bookmarked) && "fill-current"
-                    )} 
-                  />
-                  {article.saved || article.bookmarked ? 'Saved' : 'Save'}
+                  {saveArticleMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Bookmark 
+                      className={cn(
+                        "h-4 w-4 mr-2",
+                        (article.saved || article.bookmarked) && "fill-current"
+                      )} 
+                    />
+                  )}
+                  {saveArticleMutation.isPending 
+                    ? 'Saving...' 
+                    : (article.saved || article.bookmarked) 
+                      ? 'Saved' 
+                      : 'Save'
+                  }
                 </Button>
                 
                 <Button onClick={handleShare} variant="outline">
