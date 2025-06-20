@@ -311,7 +311,7 @@ export default function ArticlesDashboard() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Articles Dashboard</h1>
+            <h1 className="text-3xl font-bold tracking-tight">My Articles Dashboard</h1>
             <p className="text-muted-foreground">
               Manage your Discover content, create new articles, and track performance
             </p>
