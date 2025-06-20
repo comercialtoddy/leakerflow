@@ -62,12 +62,12 @@ const ArticleCard = memo(({
   getStatusColor: (status: string) => string;
   formatViews: (views: number) => string;
 }) => (
-  <Card className="group hover:shadow-lg transition-shadow duration-200">
+  <div className="bg-card text-card-foreground rounded-xl border shadow-sm group hover:shadow-lg transition-shadow duration-200 overflow-hidden">
     <div className="relative">
       <img
         src={article.image_url || '/api/placeholder/400/250'}
         alt={article.title}
-        className="w-full h-48 object-cover rounded-t-lg"
+        className="w-full h-48 object-cover"
         loading="lazy"
       />
       <div className="absolute top-3 left-3 flex gap-2">
@@ -110,7 +110,7 @@ const ArticleCard = memo(({
       </div>
     </div>
     
-    <CardContent className="p-6">
+    <div className="p-6">
       <div className="space-y-4">
         <div>
           <h3 className="font-semibold text-lg line-clamp-2 mb-2">
@@ -161,8 +161,8 @@ const ArticleCard = memo(({
           </div>
         )}
       </div>
-    </CardContent>
-  </Card>
+    </div>
+  </div>
 ));
 
 const LoadingSkeleton = memo(() => (
