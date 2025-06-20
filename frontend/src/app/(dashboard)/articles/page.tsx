@@ -427,10 +427,10 @@ export default function ArticlesDashboard() {
                   className="px-3 py-2 border border-input rounded-md bg-background text-sm"
                 >
                   <option value="all">All Categories</option>
-                  <option value="AI & Automation">AI & Automation</option>
-                  <option value="Productivity">Productivity</option>
-                  <option value="Development">Development</option>
-                  <option value="Business">Business</option>
+                  <option value="official">Official</option>
+                  <option value="rumor">Rumor</option>
+                  <option value="community">Community</option>
+                  <option value="trends">Trends</option>
                 </select>
               </div>
 
