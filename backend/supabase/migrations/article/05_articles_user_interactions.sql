@@ -319,8 +319,8 @@ BEGIN
         AND a.visibility = 'public'
         -- Apply category filter
         AND (filter_category IS NULL OR 
-             (filter_category = 'trends' AND a.is_trending = true) OR
-             (filter_category != 'trends' AND a.category = filter_category)
+         (filter_category = 'trends' AND a.is_trending = true) OR
+         (filter_category != 'trends' AND a.category = filter_category)
         )
     ORDER BY 
         CASE 
