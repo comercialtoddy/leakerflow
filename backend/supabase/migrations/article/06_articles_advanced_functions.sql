@@ -1,5 +1,10 @@
--- Articles Advanced Analytics Functions
--- This migration adds advanced analytics functions for dashboards and insights
+-- =======================
+-- MIGRATION: Articles Advanced Analytics & Dashboard Functions
+-- Consolidation of: 04_articles_analytics_advanced.sql + dashboard functions
+-- Applied fixes: Account-aware analytics, time series, performance optimization
+-- =======================
+
+BEGIN;
 
 -- =======================
 -- ENHANCED DASHBOARD STATS
@@ -40,7 +45,7 @@ BEGIN
         FROM articles a
         WHERE a.created_at >= current_period_start
           AND a.created_at <= current_period_end
-          AND (a.user_id = auth.uid() OR a.status = 'published')
+          AND (a.created_by_user_id = auth.uid() OR a.status = 'published')
     ),
     previous_period_stats AS (
         SELECT 
@@ -52,7 +57,7 @@ BEGIN
         FROM articles a
         WHERE a.created_at >= previous_period_start
           AND a.created_at < current_period_start
-          AND (a.user_id = auth.uid() OR a.status = 'published')
+          AND (a.created_by_user_id = auth.uid() OR a.status = 'published')
     ),
     trending_articles AS (
         SELECT 
@@ -69,7 +74,11 @@ BEGIN
             COUNT(DISTINCT article_id) as articles_with_activity
         FROM article_events
         WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
-          AND user_id = auth.uid()
+          AND (user_id = auth.uid() OR EXISTS (
+              SELECT 1 FROM articles a 
+              WHERE a.id = article_events.article_id 
+              AND a.status = 'published'
+          ))
     )
     SELECT jsonb_build_object(
         'overview', jsonb_build_object(
@@ -136,7 +145,7 @@ BEGIN
     
     RETURN stats;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =======================
 -- TIME SERIES ANALYTICS
@@ -174,7 +183,7 @@ BEGIN
           AND a.date >= CURRENT_DATE - (p_days_back || ' days')::interval
         ORDER BY a.date;
     ELSE
-        -- Aggregate time series for all user's articles
+        -- Aggregate time series for all accessible articles
         RETURN QUERY
         SELECT 
             aa.date,
@@ -192,12 +201,12 @@ BEGIN
         FROM article_analytics aa
         JOIN articles a ON a.id = aa.article_id
         WHERE aa.date >= CURRENT_DATE - (p_days_back || ' days')::interval
-          AND (a.user_id = auth.uid() OR a.status = 'published')
+          AND (a.created_by_user_id = auth.uid() OR a.status = 'published')
         GROUP BY aa.date
         ORDER BY aa.date;
     END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =======================
 -- TOP PERFORMERS
@@ -247,7 +256,7 @@ BEGIN
         a.trend_score,
         a.created_at
     FROM articles a
-    WHERE (a.user_id = auth.uid() OR a.status = 'published')
+    WHERE (a.created_by_user_id = auth.uid() OR a.status = 'published')
       AND CASE p_metric
             WHEN 'trending' THEN a.is_trending = true
             ELSE true
@@ -255,15 +264,15 @@ BEGIN
     ORDER BY 
         CASE p_metric
             WHEN 'views' THEN a.total_views
-            WHEN 'engagement' THEN a.engagement
+            WHEN 'engagement' THEN a.engagement::integer
             WHEN 'shares' THEN a.total_shares
             WHEN 'saves' THEN a.total_saves
-            WHEN 'trending' THEN a.trend_score
+            WHEN 'trending' THEN a.trend_score::integer
             ELSE a.total_views
         END DESC NULLS LAST
     LIMIT p_limit;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =======================
 -- CATEGORY ANALYTICS
@@ -291,14 +300,14 @@ BEGIN
         ROUND(AVG(a.engagement)::numeric, 2) as avg_engagement,
         ROUND(AVG(a.avg_read_time)::numeric, 2) as avg_read_time
     FROM articles a
-    WHERE (a.user_id = auth.uid() OR a.status = 'published')
+    WHERE (a.created_by_user_id = auth.uid() OR a.status = 'published')
     GROUP BY a.category
     ORDER BY total_views DESC;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =======================
--- READER BEHAVIOR
+-- READER BEHAVIOR INSIGHTS
 -- =======================
 
 -- Get reader behavior insights
@@ -328,7 +337,7 @@ BEGIN
           AND EXISTS (
               SELECT 1 FROM articles a 
               WHERE a.id = e.article_id 
-              AND (a.user_id = auth.uid() OR a.status = 'published')
+              AND (a.created_by_user_id = auth.uid() OR a.status = 'published')
           )
     )
     SELECT jsonb_build_object(
@@ -363,4 +372,140 @@ BEGIN
     
     RETURN insights;
 END;
-$$ LANGUAGE plpgsql; 
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =======================
+-- ACCOUNT-AWARE ANALYTICS
+-- =======================
+
+-- Get analytics for a specific account
+CREATE OR REPLACE FUNCTION get_account_analytics(
+    p_account_id uuid,
+    p_days_back integer DEFAULT 30
+)
+RETURNS jsonb AS $$
+DECLARE
+    analytics jsonb;
+    start_date date;
+BEGIN
+    -- Check if user has access to this account
+    IF NOT basejump.has_role_on_account(p_account_id) THEN
+        RAISE EXCEPTION 'Access denied to account analytics';
+    END IF;
+    
+    start_date := CURRENT_DATE - (p_days_back || ' days')::interval;
+    
+    WITH account_stats AS (
+        SELECT 
+            COUNT(DISTINCT a.id) as total_articles,
+            COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'published') as published_articles,
+            COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'draft') as draft_articles,
+            SUM(a.total_views) as total_views,
+            SUM(a.total_shares) as total_shares,
+            SUM(a.total_saves) as total_saves,
+            AVG(a.engagement) as avg_engagement,
+            COUNT(DISTINCT a.created_by_user_id) as unique_authors
+        FROM articles a
+        WHERE a.account_id = p_account_id
+        AND a.created_at >= start_date
+    ),
+    recent_activity AS (
+        SELECT 
+            COUNT(*) FILTER (WHERE event_type = 'view') as recent_views,
+            COUNT(*) FILTER (WHERE event_type = 'share') as recent_shares,
+            COUNT(*) FILTER (WHERE event_type = 'save') as recent_saves
+        FROM article_events e
+        WHERE e.account_id = p_account_id
+        AND e.created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+    )
+    SELECT jsonb_build_object(
+        'account_id', p_account_id,
+        'period_days', p_days_back,
+        'articles', jsonb_build_object(
+            'total', COALESCE(s.total_articles, 0),
+            'published', COALESCE(s.published_articles, 0),
+            'draft', COALESCE(s.draft_articles, 0),
+            'unique_authors', COALESCE(s.unique_authors, 0)
+        ),
+        'engagement', jsonb_build_object(
+            'total_views', COALESCE(s.total_views, 0),
+            'total_shares', COALESCE(s.total_shares, 0),
+            'total_saves', COALESCE(s.total_saves, 0),
+            'avg_engagement', ROUND(COALESCE(s.avg_engagement, 0)::numeric, 2)
+        ),
+        'recent_activity', jsonb_build_object(
+            'views_24h', COALESCE(ra.recent_views, 0),
+            'shares_24h', COALESCE(ra.recent_shares, 0),
+            'saves_24h', COALESCE(ra.recent_saves, 0)
+        )
+    ) INTO analytics
+    FROM account_stats s
+    CROSS JOIN recent_activity ra;
+    
+    RETURN analytics;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =======================
+-- PERFORMANCE OPTIMIZATION FUNCTIONS
+-- =======================
+
+-- Function to refresh analytics cache (for heavy queries)
+CREATE OR REPLACE FUNCTION refresh_analytics_cache()
+RETURNS void AS $$
+BEGIN
+    -- Update article metrics for all articles
+    UPDATE articles a
+    SET 
+        total_views = (
+            SELECT COUNT(DISTINCT e.user_id)
+            FROM article_events e
+            WHERE e.article_id = a.id AND e.event_type = 'view'
+        ),
+        total_shares = (
+            SELECT COUNT(*)
+            FROM article_events e
+            WHERE e.article_id = a.id AND e.event_type = 'share'
+        ),
+        total_saves = (
+            SELECT COUNT(*)
+            FROM saved_articles sa
+            WHERE sa.article_id = a.id
+        );
+    
+    -- Recalculate trend scores
+    PERFORM calculate_trend_scores();
+    
+    RAISE NOTICE 'Analytics cache refreshed at %', now();
+END;
+$$ LANGUAGE plpgsql;
+
+-- =======================
+-- VERIFICATION
+-- =======================
+
+DO $$
+DECLARE
+  function_count integer;
+BEGIN
+  -- Check functions exist
+  SELECT COUNT(*) INTO function_count
+  FROM pg_proc 
+  WHERE proname IN (
+    'get_enhanced_dashboard_stats',
+    'get_analytics_time_series',
+    'get_top_performing_articles',
+    'get_category_analytics',
+    'get_reader_behavior_insights',
+    'get_account_analytics',
+    'refresh_analytics_cache'
+  );
+  
+  IF function_count < 7 THEN
+    RAISE WARNING 'Not all advanced analytics functions were created. Found % functions', function_count;
+  END IF;
+  
+  RAISE NOTICE 'Articles advanced analytics & dashboard functions setup completed successfully';
+END $$;
+
+COMMIT; 

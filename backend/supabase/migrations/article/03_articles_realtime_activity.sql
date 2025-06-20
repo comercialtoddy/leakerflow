@@ -1,5 +1,10 @@
--- Articles Real-time Activity Tracking
--- This migration creates the real-time activity system for articles
+-- =======================
+-- MIGRATION: Articles Real-time Activity System
+-- Consolidation of: 05_articles_realtime_activity.sql
+-- Applied fixes: Basejump integration with account_id
+-- =======================
+
+BEGIN;
 
 -- =======================
 -- REAL-TIME ACTIVITY TABLE
@@ -36,30 +41,6 @@ CREATE INDEX IF NOT EXISTS idx_article_realtime_activity_article_id ON article_r
 CREATE INDEX IF NOT EXISTS idx_article_realtime_activity_user_id ON article_realtime_activity(user_id);
 CREATE INDEX IF NOT EXISTS idx_article_realtime_activity_last_seen ON article_realtime_activity(last_seen_at);
 CREATE INDEX IF NOT EXISTS idx_article_realtime_activity_active ON article_realtime_activity(article_id, ended_at) WHERE ended_at IS NULL;
-
--- =======================
--- ROW LEVEL SECURITY
--- =======================
-
-ALTER TABLE article_realtime_activity ENABLE ROW LEVEL SECURITY;
-
--- Users can track their own activities
-CREATE POLICY "Users can track own activities" ON article_realtime_activity
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- Users can update their own activities
-CREATE POLICY "Users can update own activities" ON article_realtime_activity
-    FOR UPDATE USING (auth.uid() = user_id);
-
--- Users can view activities for articles they can access
-CREATE POLICY "Users can view activities for accessible articles" ON article_realtime_activity
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM articles a 
-            WHERE a.id = article_realtime_activity.article_id 
-            AND (a.status = 'published' OR a.user_id = auth.uid())
-        )
-    );
 
 -- =======================
 -- ACTIVITY FUNCTIONS
@@ -113,7 +94,7 @@ BEGIN
     
     RETURN activity_record;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- End a real-time activity
 CREATE OR REPLACE FUNCTION end_realtime_activity(
@@ -141,7 +122,7 @@ BEGIN
     
     RETURN FOUND;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Get current active users for an article
 CREATE OR REPLACE FUNCTION get_article_active_users(
@@ -191,7 +172,7 @@ BEGIN
         'users', '[]'::jsonb
     ));
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Get global active users summary
 CREATE OR REPLACE FUNCTION get_global_active_users(
@@ -242,7 +223,7 @@ BEGIN
         'categories', '[]'::jsonb
     ));
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Cleanup old activity records (run periodically)
 CREATE OR REPLACE FUNCTION cleanup_old_activities()
@@ -259,4 +240,43 @@ BEGIN
     WHERE (ended_at IS NOT NULL AND ended_at < now() - INTERVAL '24 hours')
        OR (last_seen_at < now() - INTERVAL '24 hours');
 END;
-$$ LANGUAGE plpgsql; 
+$$ LANGUAGE plpgsql;
+
+-- =======================
+-- VERIFICATION
+-- =======================
+
+DO $$
+DECLARE
+  table_exists boolean;
+  function_count integer;
+BEGIN
+  -- Check table exists
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_name = 'article_realtime_activity'
+  ) INTO table_exists;
+  
+  IF NOT table_exists THEN
+    RAISE EXCEPTION 'article_realtime_activity table was not created';
+  END IF;
+  
+  -- Check functions exist
+  SELECT COUNT(*) INTO function_count
+  FROM pg_proc 
+  WHERE proname IN (
+    'track_realtime_activity', 
+    'end_realtime_activity', 
+    'get_article_active_users', 
+    'get_global_active_users',
+    'cleanup_old_activities'
+  );
+  
+  IF function_count < 5 THEN
+    RAISE EXCEPTION 'Not all realtime activity functions were created';
+  END IF;
+  
+  RAISE NOTICE 'Articles realtime activity system setup completed successfully';
+END $$;
+
+COMMIT; 
