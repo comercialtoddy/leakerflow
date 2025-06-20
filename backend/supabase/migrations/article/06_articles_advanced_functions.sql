@@ -27,7 +27,8 @@ BEGIN
     previous_period_start := current_period_start - (p_days_back || ' days')::interval;
     
     -- Build comprehensive stats object
-    WITH current_period_stats AS (
+    WITH overall_stats AS (
+        -- Get ALL articles and their total metrics (not filtered by date)
         SELECT 
             COUNT(DISTINCT a.id) as total_articles,
             COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'published') as published_articles,
@@ -43,17 +44,29 @@ BEGIN
             AVG(a.avg_read_time) as avg_read_time,
             AVG(a.bounce_rate) as avg_bounce_rate
         FROM articles a
+        WHERE (a.created_by_user_id = auth.uid() OR a.status = 'published')
+    ),
+    current_period_stats AS (
+        -- Get articles created in current period for growth calculation
+        SELECT 
+            COUNT(DISTINCT a.id) as new_articles,
+            SUM(a.total_views) as period_views,
+            SUM(a.total_shares) as period_shares,
+            SUM(a.total_saves) as period_saves,
+            AVG(a.engagement) as period_engagement
+        FROM articles a
         WHERE a.created_at >= current_period_start
           AND a.created_at <= current_period_end
           AND (a.created_by_user_id = auth.uid() OR a.status = 'published')
     ),
     previous_period_stats AS (
+        -- Get articles created in previous period for growth calculation
         SELECT 
-            COUNT(DISTINCT a.id) as total_articles,
-            SUM(a.total_views) as total_views,
-            SUM(a.total_shares) as total_shares,
-            SUM(a.total_saves) as total_saves,
-            AVG(a.engagement) as avg_engagement
+            COUNT(DISTINCT a.id) as new_articles,
+            SUM(a.total_views) as period_views,
+            SUM(a.total_shares) as period_shares,
+            SUM(a.total_saves) as period_saves,
+            AVG(a.engagement) as period_engagement
         FROM articles a
         WHERE a.created_at >= previous_period_start
           AND a.created_at < current_period_start
@@ -82,47 +95,47 @@ BEGIN
     )
     SELECT jsonb_build_object(
         'overview', jsonb_build_object(
-            'total_articles', COALESCE(cp.total_articles, 0),
-            'published_articles', COALESCE(cp.published_articles, 0),
-            'draft_articles', COALESCE(cp.draft_articles, 0),
+            'total_articles', COALESCE(os.total_articles, 0),
+            'published_articles', COALESCE(os.published_articles, 0),
+            'draft_articles', COALESCE(os.draft_articles, 0),
             'trending_articles', COALESCE(t.trending_count, 0)
         ),
         'metrics', jsonb_build_object(
-            'total_views', COALESCE(cp.total_views, 0),
-            'unique_views', COALESCE(cp.unique_views, 0),
-            'total_shares', COALESCE(cp.total_shares, 0),
-            'total_saves', COALESCE(cp.total_saves, 0),
-            'total_comments', COALESCE(cp.total_comments, 0),
-            'total_upvotes', COALESCE(cp.total_upvotes, 0),
-            'total_downvotes', COALESCE(cp.total_downvotes, 0),
-            'avg_engagement', ROUND(COALESCE(cp.avg_engagement, 0)::numeric, 2),
-            'avg_read_time', ROUND(COALESCE(cp.avg_read_time, 0)::numeric, 2),
-            'avg_bounce_rate', ROUND(COALESCE(cp.avg_bounce_rate, 0)::numeric, 2)
+            'total_views', COALESCE(os.total_views, 0),
+            'unique_views', COALESCE(os.unique_views, 0),
+            'total_shares', COALESCE(os.total_shares, 0),
+            'total_saves', COALESCE(os.total_saves, 0),
+            'total_comments', COALESCE(os.total_comments, 0),
+            'total_upvotes', COALESCE(os.total_upvotes, 0),
+            'total_downvotes', COALESCE(os.total_downvotes, 0),
+            'avg_engagement', ROUND(COALESCE(os.avg_engagement, 0)::numeric, 2),
+            'avg_read_time', ROUND(COALESCE(os.avg_read_time, 0)::numeric, 2),
+            'avg_bounce_rate', ROUND(COALESCE(os.avg_bounce_rate, 0)::numeric, 2)
         ),
         'growth', jsonb_build_object(
             'articles', CASE 
-                WHEN pp.total_articles > 0 THEN 
-                    ROUND(((cp.total_articles - pp.total_articles)::numeric / pp.total_articles) * 100, 1)
+                WHEN pp.new_articles > 0 THEN 
+                    ROUND(((cp.new_articles - pp.new_articles)::numeric / pp.new_articles) * 100, 1)
                 ELSE 0 
             END,
             'views', CASE 
-                WHEN pp.total_views > 0 THEN 
-                    ROUND(((cp.total_views - pp.total_views)::numeric / pp.total_views) * 100, 1)
+                WHEN pp.period_views > 0 THEN 
+                    ROUND(((cp.period_views - pp.period_views)::numeric / pp.period_views) * 100, 1)
                 ELSE 0 
             END,
             'shares', CASE 
-                WHEN pp.total_shares > 0 THEN 
-                    ROUND(((cp.total_shares - pp.total_shares)::numeric / pp.total_shares) * 100, 1)
+                WHEN pp.period_shares > 0 THEN 
+                    ROUND(((cp.period_shares - pp.period_shares)::numeric / pp.period_shares) * 100, 1)
                 ELSE 0 
             END,
             'saves', CASE 
-                WHEN pp.total_saves > 0 THEN 
-                    ROUND(((cp.total_saves - pp.total_saves)::numeric / pp.total_saves) * 100, 1)
+                WHEN pp.period_saves > 0 THEN 
+                    ROUND(((cp.period_saves - pp.period_saves)::numeric / pp.period_saves) * 100, 1)
                 ELSE 0 
             END,
             'engagement', CASE 
-                WHEN pp.avg_engagement > 0 THEN 
-                    ROUND(((cp.avg_engagement - pp.avg_engagement)::numeric / pp.avg_engagement) * 100, 1)
+                WHEN pp.period_engagement > 0 THEN 
+                    ROUND(((cp.period_engagement - pp.period_engagement)::numeric / pp.period_engagement) * 100, 1)
                 ELSE 0 
             END
         ),
@@ -138,7 +151,8 @@ BEGIN
             'days', p_days_back
         )
     ) INTO stats
-    FROM current_period_stats cp
+    FROM overall_stats os
+    CROSS JOIN current_period_stats cp
     CROSS JOIN previous_period_stats pp
     CROSS JOIN trending_articles t
     CROSS JOIN recent_events re;

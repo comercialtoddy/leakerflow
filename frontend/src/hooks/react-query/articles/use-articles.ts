@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { 
@@ -169,8 +169,8 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: articlesKeys.dashboardStats(),
     queryFn: () => articlesService.getDashboardStats(),
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    staleTime: 1 * 60 * 1000, // 1 minute (reduced for more frequent updates)
+    refetchInterval: 3 * 60 * 1000, // Refetch every 3 minutes
   });
 }
 
@@ -179,9 +179,23 @@ export function useEnhancedDashboardStats(daysBack: number = 30) {
   return useQuery({
     queryKey: [...articlesKeys.dashboardStats(), 'enhanced', daysBack],
     queryFn: () => articlesService.getEnhancedDashboardStats(daysBack),
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    staleTime: 1 * 60 * 1000, // 1 minute (reduced for more frequent updates)
+    refetchInterval: 3 * 60 * 1000, // Refetch every 3 minutes
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
+}
+
+// Utility function to manually refresh dashboard stats
+export function useRefreshDashboardStats() {
+  const queryClient = useQueryClient();
+  
+  return useCallback(() => {
+    // Invalidate all dashboard-related queries
+    queryClient.invalidateQueries({ queryKey: articlesKeys.dashboardStats() });
+    queryClient.invalidateQueries({ queryKey: articlesKeys.analytics() });
+    queryClient.invalidateQueries({ queryKey: articlesKeys.stats() });
+    queryClient.invalidateQueries({ queryKey: articlesKeys.lists() });
+  }, [queryClient]);
 }
 
 // Get analytics time series
