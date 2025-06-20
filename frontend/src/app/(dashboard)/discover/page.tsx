@@ -133,16 +133,16 @@ export default function DiscoverPage() {
     }
   }, [incrementViewsMutation]);
 
-  // Load more content function
+  // Load more content function - simplified to always show more content
   const loadMoreContent = useCallback(async () => {
     if (isLoading || isFetchingNextPage) return;
 
     try {
-      // If we have more pages to fetch, fetch them
+      // If we have more pages to fetch from the server, fetch them first
       if (hasNextPage) {
         await fetchNextPage();
       } else if (filteredArticles.length > 0) {
-        // Restart cycle - just increment the cycle counter
+        // No more pages to fetch, but we have articles - cycle through them
         setCurrentCycle(prev => prev + 1);
       }
     } catch (error) {
@@ -183,20 +183,24 @@ export default function DiscoverPage() {
     };
   }, [loadMoreContent]);
 
-  // Calculate how many articles to show based on cycles
+  // Calculate how many articles to show based on cycles - simplified approach
   const articlesToShow = useMemo(() => {
-    const baseArticles = Math.min(12, filteredArticles.length); // Show first 12 articles initially
-    const cycleArticles = currentCycle * 4; // Each cycle adds 4 more articles
-    const totalToShow = baseArticles + cycleArticles;
+    if (filteredArticles.length === 0) return [];
     
-    // If we've shown all articles, restart from beginning with cycle indicator
-    if (totalToShow >= filteredArticles.length && filteredArticles.length > 0) {
-      const cycleSize = Math.min(12, filteredArticles.length);
-      const currentCycleArticles = ((currentCycle - 1) * 4) % filteredArticles.length;
-      return filteredArticles.slice(0, Math.min(cycleSize + currentCycleArticles, filteredArticles.length));
+    // Start with showing 12 articles or all available articles if less than 12
+    const baseArticles = Math.min(12, filteredArticles.length);
+    const additionalArticles = currentCycle * 4; // Each cycle adds 4 more articles
+    const totalToShow = baseArticles + additionalArticles;
+    
+    // If we need more articles than available, cycle through them
+    if (totalToShow <= filteredArticles.length) {
+      return filteredArticles.slice(0, totalToShow);
+    } else {
+      // Create a cycling array by repeating articles
+      const cycles = Math.ceil(totalToShow / filteredArticles.length);
+      const repeatedArticles = Array(cycles).fill(filteredArticles).flat();
+      return repeatedArticles.slice(0, totalToShow);
     }
-    
-    return filteredArticles.slice(0, totalToShow);
   }, [filteredArticles, currentCycle]);
 
   // Memoized chunked content
@@ -208,7 +212,7 @@ export default function DiscoverPage() {
   // Memoized loading states
   const isInitialLoading = isLoading && filteredArticles.length === 0;
   const isLoadingMoreContent = isFetchingNextPage && filteredArticles.length > 0;
-  const showCycleIndicator = !hasNextPage && filteredArticles.length > 0 && currentCycle > 0;
+  const showCycleIndicator = !hasNextPage && filteredArticles.length > 0 && currentCycle > 0 && articlesToShow.length > filteredArticles.length;
 
   return (
     <>
@@ -245,7 +249,7 @@ export default function DiscoverPage() {
             ) : (
               <div className="space-y-6">
                 {chunkedContent.map((chunk, index) => (
-                  <section key={`chunk-${index}`} className="space-y-6">
+                  <section key={`chunk-${index}-${chunk[0]?.id || index}`} className="space-y-6">
                     {chunk[0] && (
                       <ContentHero
                         content={chunk[0]}
