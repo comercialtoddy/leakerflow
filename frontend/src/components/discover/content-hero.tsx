@@ -51,7 +51,7 @@ export const ContentHero = React.memo(function ContentHero({
     >
       <div className="bg-card rounded-xl overflow-hidden border border-border/50 hover:border-primary/20 hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.2)]">
         {/* Principle 3: The Image - Primary element, largest part */}
-        <div className="relative aspect-[4/1] overflow-hidden">
+        <div className="relative aspect-[3/1] overflow-hidden">
           <img
             src={content.imageUrl}
             alt={content.title}
