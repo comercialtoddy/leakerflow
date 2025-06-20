@@ -48,6 +48,23 @@ export function useArticles(filters: ArticlesFilters = {}) {
   });
 }
 
+// Hook para listar artigos do usuário (dashboard)
+export function useUserArticles(filters: ArticlesFilters = {}) {
+  return useInfiniteQuery({
+    queryKey: [...articlesKeys.lists(), 'user', filters],
+    queryFn: async ({ pageParam = 1 }) => {
+      return articlesService.getUserArticles(
+        { page: pageParam, pageSize: 10 },
+        filters
+      );
+    },
+    getNextPageParam: (lastPage, pages) => {
+      return lastPage.hasMore ? pages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+  });
+}
+
 // Hook para buscar artigo específico
 export function useArticle(id: string | null) {
   return useQuery({

@@ -120,7 +120,119 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- PUBLIC ARTICLE LISTING FUNCTION
 -- =======================
 
--- Function to get articles with pagination and filters (includes user-specific saves)
+-- Function to get user's own articles for dashboard (account-separated)
+CREATE OR REPLACE FUNCTION get_user_articles_paginated(
+    page_size integer DEFAULT 10,
+    page_offset integer DEFAULT 0,
+    filter_status text DEFAULT NULL,
+    filter_category text DEFAULT NULL,
+    filter_account_id uuid DEFAULT NULL
+)
+RETURNS TABLE (
+    id uuid,
+    title text,
+    subtitle text,
+    content text,
+    category text,
+    tags text[],
+    author text,
+    status text,
+    media_items jsonb,
+    sources jsonb,
+    sections jsonb,
+    read_time text,
+    image_url text,
+    views integer,
+    engagement numeric,
+    bookmarked boolean,
+    saved boolean,
+    upvotes integer,
+    downvotes integer,
+    vote_score integer,
+    trend_score numeric,
+    is_trending boolean,
+    user_vote text,
+    total_views integer,
+    unique_views integer,
+    total_shares integer,
+    total_saves integer,
+    total_comments integer,
+    avg_read_time numeric,
+    bounce_rate numeric,
+    publish_date timestamptz,
+    created_at timestamptz,
+    updated_at timestamptz,
+    account_id uuid,
+    total_count bigint
+) AS $$
+BEGIN
+    -- Must be authenticated to view user articles
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'User must be authenticated to view their articles';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        a.id,
+        a.title,
+        a.subtitle,
+        a.content,
+        a.category,
+        a.tags,
+        a.author,
+        a.status,
+        a.media_items,
+        a.sources,
+        a.sections,
+        a.read_time,
+        a.image_url,
+        a.views,
+        a.engagement,
+        user_has_saved_article(a.id) as bookmarked, -- For backward compatibility
+        user_has_saved_article(a.id) as saved,
+        a.upvotes,
+        a.downvotes,
+        a.vote_score,
+        a.trend_score,
+        a.is_trending,
+        get_user_vote(a.id) as user_vote,
+        a.total_views,
+        a.unique_views,
+        a.total_shares,
+        a.total_saves,
+        a.total_comments,
+        a.avg_read_time,
+        a.bounce_rate,
+        a.publish_date,
+        a.created_at,
+        a.updated_at,
+        a.account_id,
+        COUNT(*) OVER() as total_count
+    FROM articles a
+    WHERE 
+        -- Only user's own articles
+        a.created_by_user_id = auth.uid()
+        -- Apply status filter
+        AND (filter_status IS NULL OR a.status = filter_status)
+        -- Apply category filter
+        AND (filter_category IS NULL OR 
+             (filter_category = 'trends' AND a.is_trending = true) OR
+             (filter_category != 'trends' AND a.category = filter_category)
+        )
+        -- Apply account filter
+        AND (filter_account_id IS NULL OR a.account_id = filter_account_id)
+    ORDER BY 
+        a.account_id, -- Group by account first
+        CASE 
+            WHEN filter_category = 'trends' THEN a.trend_score
+            ELSE EXTRACT(EPOCH FROM COALESCE(a.publish_date, a.created_at))
+        END DESC
+    LIMIT page_size
+    OFFSET page_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to get public articles for discover (public access)
 CREATE OR REPLACE FUNCTION get_articles_paginated(
     page_size integer DEFAULT 10,
     page_offset integer DEFAULT 0,
@@ -202,12 +314,14 @@ BEGIN
         COUNT(*) OVER() as total_count
     FROM articles a
     WHERE 
-        (filter_status IS NULL OR a.status = filter_status) AND
-        (filter_category IS NULL OR 
-         (filter_category = 'trends' AND a.is_trending = true) OR
-         (filter_category != 'trends' AND a.category = filter_category)
-        ) AND
-        (a.status = 'published' OR a.user_id = auth.uid())
+        -- Only public published articles for discover
+        a.status = 'published'
+        AND a.visibility = 'public'
+        -- Apply category filter
+        AND (filter_category IS NULL OR 
+             (filter_category = 'trends' AND a.is_trending = true) OR
+             (filter_category != 'trends' AND a.category = filter_category)
+        )
     ORDER BY 
         CASE 
             WHEN filter_category = 'trends' THEN a.trend_score
@@ -465,6 +579,7 @@ BEGIN
     'toggle_article_bookmark',
     'increment_article_views',
     'get_articles_paginated',
+    'get_user_articles_paginated',
     'get_article_by_id',
     'get_user_saved_articles',
     'get_trending_articles',
@@ -472,7 +587,7 @@ BEGIN
     'recalculate_article_saves'
   );
   
-  IF function_count < 10 THEN
+  IF function_count < 11 THEN
     RAISE WARNING 'Not all user interaction functions were created. Found % functions', function_count;
   END IF;
   

@@ -53,6 +53,7 @@ export interface ArticlesFilters {
   status?: string;
   category?: string;
   search?: string;
+  accountId?: string;
 }
 
 export interface ArticlesPagination {
@@ -379,6 +380,80 @@ export class ArticlesService {
 
       // If we have search filters, we need to apply them post-query
       // since the function doesn't support search yet
+      let articles = data || [];
+      
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        articles = articles.filter((article: any) => 
+          article.title?.toLowerCase().includes(searchLower) ||
+          article.subtitle?.toLowerCase().includes(searchLower)
+        );
+      }
+
+      const totalCount = articles.length > 0 ? articles[0].total_count : 0;
+
+      // Check saved status for all articles in one query
+      let savedArticleIds: string[] = [];
+      try {
+        const { data: user } = await this.supabase.auth.getUser();
+        if (user.user && articles.length > 0) {
+          const articleIds = articles.map((a: any) => a.id);
+          const { data: savedArticles } = await this.supabase
+            .from('saved_articles')
+            .select('article_id')
+            .eq('user_id', user.user.id)
+            .in('article_id', articleIds);
+          
+          savedArticleIds = savedArticles?.map(s => s.article_id) || [];
+        }
+      } catch (savedError) {
+        console.warn('Could not check saved status:', savedError);
+      }
+
+      // Process articles and update saved status
+      const processedArticles = await Promise.all(
+        articles.map(async (article: any) => {
+          // Update saved status based on our query
+          const isSaved = savedArticleIds.includes(article.id);
+          article.saved = isSaved;
+          article.bookmarked = isSaved; // Keep both in sync
+          
+          return this.processArticleContent(article);
+        })
+      );
+
+      return {
+        articles: processedArticles,
+        totalCount,
+        hasMore: (offset + pageSize) < totalCount,
+      };
+    } catch (error) {
+      console.error('Error fetching articles:', error);
+      throw error;
+    }
+  }
+
+  // New method for dashboard articles (user's own articles only)
+  async getUserArticles(
+    pagination: ArticlesPagination = { page: 1, pageSize: 10 },
+    filters: ArticlesFilters = {}
+  ) {
+    try {
+      const { page, pageSize } = pagination;
+      const offset = (page - 1) * pageSize;
+
+      // Use the new database function for user's own articles
+      const { data, error } = await this.supabase.rpc('get_user_articles_paginated', {
+        page_size: pageSize,
+        page_offset: offset,
+        filter_status: filters.status === 'all' ? null : filters.status,
+        filter_category: filters.category === 'all' ? null : filters.category,
+        filter_account_id: filters.accountId || null
+      });
+
+      if (error) throw error;
+
+      // If we have search filters, we need to apply them post-query
       let articles = data || [];
       
       if (filters.search) {
@@ -1501,22 +1576,7 @@ export class ArticlesService {
     return `session_${Date.now()}_${Math.random().toString(36).substring(2)}`;
   }
 
-  // Get articles for current user
-  async getUserArticles() {
-    try {
-      const { data, error } = await this.supabase
-        .from('articles')
-        .select('id, title, status, created_at, user_id')
-        .eq('user_id', (await this.supabase.auth.getUser()).data.user?.id)
-        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Error fetching user articles:', error);
-      throw error;
-    }
-  }
 
   // =======================
   // REAL-TIME ACTIVITY

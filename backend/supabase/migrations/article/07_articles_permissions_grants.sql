@@ -111,6 +111,7 @@ GRANT EXECUTE ON FUNCTION increment_article_views(uuid, integer, numeric) TO aut
 
 -- Public article functions
 GRANT EXECUTE ON FUNCTION get_articles_paginated(integer, integer, text, text) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_user_articles_paginated(integer, integer, text, text, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_article_by_id(uuid) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION get_user_saved_articles(integer, integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_trending_articles(integer, integer) TO authenticated, anon;

@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/card';
 import Link from 'next/link';
 import { 
-  useArticles, 
+  useUserArticles, 
   useEnhancedDashboardStats, 
   useDeleteArticle, 
   useSaveArticle
@@ -205,7 +205,7 @@ export default function ArticlesDashboard() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage 
-  } = useArticles({
+  } = useUserArticles({
     status: selectedStatus === 'all' ? undefined : selectedStatus,
     category: selectedCategory === 'all' ? undefined : selectedCategory,
     search: debouncedSearchQuery || undefined
