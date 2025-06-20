@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Bot, Compass, Menu, Store, FileText, BarChart3 } from 'lucide-react';
+import { Bot, Compass, Menu, Store, FileText } from 'lucide-react';
 
 import { NavAgents } from '@/components/sidebar/nav-agents';
 import { NavUserWithTeams } from '@/components/sidebar/nav-user-with-teams';
@@ -171,21 +171,7 @@ export function SidebarLeft({
                 </SidebarMenuButton>
               </Link>
             )}
-            {discoverEnabled && (
-              <Link href="/analytics">
-                <SidebarMenuButton className={cn({
-                  'bg-primary/10 font-medium': pathname.startsWith('/analytics'),
-                })}>
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  <span className="flex items-center justify-between w-full">
-                    Analytics
-                    <Badge variant="new">
-                      New
-                    </Badge>
-                  </span>
-                </SidebarMenuButton>
-              </Link>
-            )}
+
             {customAgentsEnabled && (
               <Link href="/agents">
                 <SidebarMenuButton className={cn({
