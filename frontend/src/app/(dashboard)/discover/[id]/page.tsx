@@ -438,14 +438,6 @@ export default function ArticlePage() {
                   </div>
                 </>
               )}
-              {(article.engagement || 0) > 0 && (
-                <>
-                  <span>•</span>
-                  <div className="flex items-center gap-1">
-                    <span>{Math.round(article.engagement)}% engagement</span>
-              </div>
-                </>
-              )}
             </div>
           </article>
         </div>
