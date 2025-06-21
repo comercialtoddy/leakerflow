@@ -31,6 +31,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
+import { useFeatureFlags } from '@/lib/feature-flags';
 
 export function SidebarLeft({
   ...props
@@ -48,6 +49,9 @@ export function SidebarLeft({
   });
 
   const pathname = usePathname();
+  const { flags, loading: flagsLoading } = useFeatureFlags(['custom_agents', 'agent_marketplace']);
+  const customAgentsEnabled = flags.custom_agents;
+  const marketplaceEnabled = flags.agent_marketplace;
 
   // Fetch user data
   useEffect(() => {
@@ -134,9 +138,10 @@ export function SidebarLeft({
         </div>
       </SidebarHeader>
       <SidebarContent className="[&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-      <SidebarGroup>
-        {/* GTA VI Section */}
-        <Link href="/gta6">
+          {!flagsLoading && (customAgentsEnabled || marketplaceEnabled || pageGta6) && (
+          <SidebarGroup>
+            {pageGta6 && (
+            <Link href="/gta6">
           <SidebarMenuButton 
             className={cn(
               "relative overflow-hidden",
@@ -150,7 +155,6 @@ export function SidebarLeft({
             tooltip={state === 'collapsed' ? "Fandom GTA VI" : undefined}
             isActive={pathname === '/gta6'}
           >
-            {/* GTA VI Icon */}
             <div className="relative flex-shrink-0 h-4 w-4 flex items-center justify-center">
               <div className="absolute inset-0 rounded-sm bg-gradient-to-br from-purple-600 to-pink-600 opacity-90"></div>
               <div className="relative z-10 font-bold text-white text-xs tracking-wide">
@@ -165,35 +169,39 @@ export function SidebarLeft({
             </span>
           </SidebarMenuButton>
         </Link>
-
-        <Link href="/agents">
-          <SidebarMenuButton className={cn({
-            'bg-primary/10 font-medium': pathname === '/agents',
-          })}>
-            <Bot className="h-4 w-4" />
-            <span className="flex items-center justify-between w-full">
-              Agent Playground
-              <Badge variant="new">
-                New
-              </Badge>
-            </span>
-          </SidebarMenuButton>
-        </Link>
-        
-        <Link href="/marketplace">
-          <SidebarMenuButton className={cn({
-            'bg-primary/10 font-medium': pathname === '/marketplace',
-          })}>
-            <Store className="h-4 w-4" />
-            <span className="flex items-center justify-between w-full">
-              Marketplace
-              <Badge variant="new">
-                New
-              </Badge>
-            </span>
-          </SidebarMenuButton>
-        </Link>
-      </SidebarGroup>
+            )}
+            {customAgentsEnabled && (
+              <Link href="/agents">
+                <SidebarMenuButton className={cn({
+                  'bg-primary/10 font-medium': pathname === '/agents',
+                })}>
+                  <Bot className="h-4 w-4 mr-2" />
+                  <span className="flex items-center justify-between w-full">
+                    Agent Playground
+                    <Badge variant="new">
+                      New
+                    </Badge>
+                  </span>
+                </SidebarMenuButton>
+              </Link>
+            )}
+            {marketplaceEnabled && (
+              <Link href="/marketplace">
+                <SidebarMenuButton className={cn({
+                  'bg-primary/10 font-medium': pathname === '/marketplace',
+                })}>
+                  <Store className="h-4 w-4 mr-2" />
+                  <span className="flex items-center justify-between w-full">
+                    Marketplace
+                    <Badge variant="new">
+                      New
+                    </Badge>
+                  </span>
+                </SidebarMenuButton>
+              </Link>
+            )}
+          </SidebarGroup>
+        )}
         <NavAgents />
       </SidebarContent>
       {state !== 'collapsed' && (

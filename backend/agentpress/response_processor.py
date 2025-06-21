@@ -357,26 +357,31 @@ class ResponseProcessor:
             ):
                 logger.info("🔥 No usage data from provider, counting with litellm.token_counter")
                 
-                # prompt side
-                prompt_tokens = token_counter(
-                    model=llm_model,
-                    messages=prompt_messages               # chat or plain; token_counter handles both
-                )
+                try:
+                    # prompt side
+                    prompt_tokens = token_counter(
+                        model=llm_model,
+                        messages=prompt_messages               # chat or plain; token_counter handles both
+                    )
 
-                # completion side
-                completion_tokens = token_counter(
-                    model=llm_model,
-                    text=accumulated_content or ""         # empty string safe
-                )
+                    # completion side
+                    completion_tokens = token_counter(
+                        model=llm_model,
+                        text=accumulated_content or ""         # empty string safe
+                    )
 
-                streaming_metadata["usage"]["prompt_tokens"]      = prompt_tokens
-                streaming_metadata["usage"]["completion_tokens"]  = completion_tokens
-                streaming_metadata["usage"]["total_tokens"]       = prompt_tokens + completion_tokens
+                    streaming_metadata["usage"]["prompt_tokens"]      = prompt_tokens
+                    streaming_metadata["usage"]["completion_tokens"]  = completion_tokens
+                    streaming_metadata["usage"]["total_tokens"]       = prompt_tokens + completion_tokens
 
-                logger.info(
-                    f"🔥 Estimated tokens – prompt: {prompt_tokens}, "
-                    f"completion: {completion_tokens}, total: {prompt_tokens + completion_tokens}"
-                )
+                    logger.info(
+                        f"🔥 Estimated tokens – prompt: {prompt_tokens}, "
+                        f"completion: {completion_tokens}, total: {prompt_tokens + completion_tokens}"
+                    )
+                    self.trace.event(name="usage_calculated_with_litellm_token_counter", level="DEFAULT", status_message=(f"Usage calculated with litellm.token_counter"))
+                except Exception as e:
+                    logger.warning(f"Failed to calculate usage: {str(e)}")
+                    self.trace.event(name="failed_to_calculate_usage", level="WARNING", status_message=(f"Failed to calculate usage: {str(e)}"))
 
 
             # Wait for pending tool executions from streaming phase
@@ -1273,7 +1278,7 @@ class ResponseProcessor:
                 "arguments": params              # The extracted parameters
             }
             
-            logger.debug(f"Parsed old format tool call: {tool_call}")
+            # logger.debug(f"Parsed old format tool call: {tool_call["function_name"]}")
             return tool_call, parsing_details # Return both dicts
             
         except Exception as e:
@@ -1701,12 +1706,12 @@ class ResponseProcessor:
                     "output": output,  # Now properly structured for frontend
                     "error": getattr(result, 'error', None) if hasattr(result, 'error') else None
                 },
-                "execution_details": {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "parsing_details": parsing_details
-                }
+                # "execution_details": {
+                #     "timestamp": datetime.now(timezone.utc).isoformat(),
+                #     "parsing_details": parsing_details
+                # }
             }
-        }
+        } 
 
         # STRUCTURED_OUTPUT_TOOLS = {
         #     "str_replace", 
@@ -1732,22 +1737,21 @@ class ResponseProcessor:
         summary_output = result.output if hasattr(result, 'output') else str(result)
         success_status = structured_result_v1["tool_execution"]["result"]["success"]
         
-        # Create a more comprehensive summary for the LLM
-        if xml_tag_name:
-            status = "completed successfully" if structured_result_v1["tool_execution"]["result"]["success"] else "failed"
-            summary = f"Tool '{xml_tag_name}' {status}. Output: {summary_output}"
-        else:
-            status = "completed successfully" if structured_result_v1["tool_execution"]["result"]["success"] else "failed"
-            summary = f"Function '{function_name}' {status}. Output: {summary_output}"
+        # # Create a more comprehensive summary for the LLM
+        # if xml_tag_name:
+        #     status = "completed successfully" if structured_result_v1["tool_execution"]["result"]["success"] else "failed"
+        #     summary = f"Tool '{xml_tag_name}' {status}. Output: {summary_output}"
+        # else:
+        #     status = "completed successfully" if structured_result_v1["tool_execution"]["result"]["success"] else "failed"
+        #     summary = f"Function '{function_name}' {status}. Output: {summary_output}"
         
-        if self.is_agent_builder:
-            return summary
-        elif function_name == "get_data_provider_endpoints":
-            logger.info(f"Returning sumnary for data provider call: {summary}")
-            return summary
+        # if self.is_agent_builder:
+        #     return summary
+        # elif function_name == "get_data_provider_endpoints":
+        #     logger.info(f"Returning sumnary for data provider call: {summary}")
+        #     return summary
             
-        else:
-            return structured_result_v1
+        return structured_result_v1
 
     def _format_xml_tool_result(self, tool_call: Dict[str, Any], result: ToolResult) -> str:
         """Format a tool result wrapped in a <tool_result> tag.
