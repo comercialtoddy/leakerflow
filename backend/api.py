@@ -16,6 +16,11 @@ from typing import Dict, Any
 
 from pydantic import BaseModel
 import uuid
+
+# Import performance monitoring
+from utils.performance_profiling import PerformanceMonitoringMiddleware, profiler_manager
+from middleware.performance_middleware import PerformanceMiddleware, initialize_performance_middleware
+import os
 # Import the agent API module
 from agent import api as agent_api
 from sandbox import api as sandbox_api
@@ -61,6 +66,13 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Failed to initialize Redis connection: {e}")
             # Continue without Redis - the application will handle Redis failures gracefully
+        
+        # Initialize performance middleware
+        try:
+            await initialize_performance_middleware()
+            logger.info("Performance middleware initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize performance middleware: {e}")
         
         # Start background tasks
         # asyncio.create_task(agent_api.restore_running_agent_runs())
@@ -138,6 +150,16 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+# Add performance monitoring middleware if enabled
+if os.getenv("ENABLE_PERFORMANCE_PROFILING", "false").lower() == "true":
+    track_all_requests = os.getenv("TRACK_ALL_REQUESTS", "false").lower() == "true"
+    app.add_middleware(PerformanceMonitoringMiddleware, track_all_requests=track_all_requests)
+    logger.info(f"Performance monitoring enabled (track_all_requests: {track_all_requests})")
+
+# Add optimized performance middleware for caching and optimization
+app.add_middleware(PerformanceMiddleware)
+logger.info("Optimized performance middleware added")
+
 app.include_router(agent_api.router, prefix="/api")
 
 app.include_router(sandbox_api.router, prefix="/api")
@@ -158,6 +180,18 @@ app.include_router(email_api.router, prefix="/api")
 from services import articles_api
 
 app.include_router(articles_api.router, prefix="/api")
+
+# Import and register admin API
+from services import admin_api
+from services import admin_api_optimized
+
+app.include_router(admin_api.router, prefix="/api")
+app.include_router(admin_api_optimized.router, prefix="/api")
+
+# Import and register author application API
+from services.author import application_router
+
+app.include_router(application_router.router, prefix="/api")
 
 @app.get("/api/health")
 async def health_check():

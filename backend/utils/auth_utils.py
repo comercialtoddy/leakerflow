@@ -1,9 +1,11 @@
 import sentry
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Depends
 from typing import Optional
 import jwt
 from jwt.exceptions import PyJWTError
-from utils.logger import structlog
+from utils.logger import structlog, logger
+from functools import wraps
+from services.supabase import create_supabase_admin_client
 
 # This function extracts the user ID from Supabase JWT
 async def get_current_user_id_from_jwt(request: Request) -> str:
@@ -60,6 +62,130 @@ async def get_current_user_id_from_jwt(request: Request) -> str:
             detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"}
         )
+
+# =======================================================================
+# GLOBAL ADMIN VERIFICATION SYSTEM
+# =======================================================================
+
+async def check_is_global_admin(user_id: str) -> bool:
+    """
+    Check if a user is a global administrator by calling the is_global_admin() function.
+    
+    Args:
+        user_id (str): The user ID to check
+        
+    Returns:
+        bool: True if the user is a global admin, False otherwise
+        
+    Raises:
+        HTTPException: If there's an error checking admin status
+    """
+    try:
+        # Use admin client to call the is_global_admin RPC function
+        admin_client = await create_supabase_admin_client()
+        
+        # Call the is_global_admin function with the user_id parameter
+        result = await admin_client.rpc('is_global_admin', {'user_uuid': user_id}).execute()
+        
+        # Close the client connection
+        await admin_client.close()
+        
+        # The function returns a boolean indicating admin status
+        is_admin = result.data if result.data is not None else False
+        
+        logger.debug(f"Admin check for user {user_id}: {is_admin}")
+        return is_admin
+        
+    except Exception as e:
+        logger.error(f"Error checking global admin status for user {user_id}: {str(e)}")
+        # In case of error, default to False for security
+        return False
+
+async def require_global_admin(request: Request) -> str:
+    """
+    FastAPI dependency that requires the user to be a global administrator.
+    
+    This function extracts the user ID from the JWT and verifies they are a global admin.
+    Use this as a dependency in FastAPI routes that require admin access.
+    
+    Args:
+        request: The FastAPI request object
+        
+    Returns:
+        str: The user ID if they are a global admin
+        
+    Raises:
+        HTTPException: If the user is not authenticated or not a global admin
+    """
+    # First, get the user ID from the JWT
+    user_id = await get_current_user_id_from_jwt(request)
+    
+    # Check if the user is a global admin
+    is_admin = await check_is_global_admin(user_id)
+    
+    if not is_admin:
+        logger.warning(f"User {user_id} attempted to access admin-only endpoint")
+        raise HTTPException(
+            status_code=403,
+            detail="Global administrator access required"
+        )
+    
+    logger.info(f"Global admin {user_id} accessing admin endpoint")
+    return user_id
+
+def admin_required(func):
+    """
+    Decorator for FastAPI route functions that require global admin access.
+    
+    This decorator automatically checks if the current user is a global admin
+    before allowing access to the decorated function.
+    
+    Usage:
+        @app.get("/api/admin/articles")
+        @admin_required
+        async def get_all_articles(request: Request):
+            # This function will only execute if user is a global admin
+            pass
+    
+    Args:
+        func: The FastAPI route function to protect
+        
+    Returns:
+        The wrapped function with admin verification
+    """
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        # Find the Request object in the arguments
+        request = None
+        for arg in args:
+            if isinstance(arg, Request):
+                request = arg
+                break
+        
+        if not request:
+            # If no Request found in args, check kwargs
+            request = kwargs.get('request')
+        
+        if not request:
+            raise HTTPException(
+                status_code=500,
+                detail="Internal error: Request object not found for admin verification"
+            )
+        
+        # Verify admin status
+        user_id = await require_global_admin(request)
+        
+        # Add user_id to kwargs for convenience
+        kwargs['admin_user_id'] = user_id
+        
+        # Call the original function
+        return await func(*args, **kwargs)
+    
+    return wrapper
+
+# =======================================================================
+# EXISTING FUNCTIONS (UNCHANGED)
+# =======================================================================
 
 async def get_account_id_from_thread(client, thread_id: str) -> str:
     """

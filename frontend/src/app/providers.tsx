@@ -3,6 +3,7 @@
 import { ThemeProvider } from 'next-themes';
 import { useState, createContext, useEffect } from 'react';
 import { AuthProvider } from '@/components/AuthProvider';
+import { AdminProvider } from '@/contexts/AdminContext';
 import { ReactQueryProvider } from '@/providers/react-query-provider';
 import { dehydrate, QueryClient } from '@tanstack/react-query';
 
@@ -45,7 +46,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ToolCallsContext.Provider value={{ toolCalls, setToolCalls }}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <ReactQueryProvider dehydratedState={dehydratedState}>
-            {children}
+            <AdminProvider>
+              {children}
+            </AdminProvider>
           </ReactQueryProvider>
         </ThemeProvider>
       </ToolCallsContext.Provider>

@@ -3,7 +3,7 @@ Articles API Router
 Handles all article-related endpoints with Basejump multi-tenant support
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import Optional, Dict, Any
 from supabase import AsyncClient
 
@@ -14,12 +14,139 @@ from services.articles import (
     ArticleFilters,
     ArticlePagination
 )
-from utils.auth_utils import get_current_user_id_from_jwt
+from utils.auth_utils import get_current_user_id_from_jwt, require_global_admin
 from utils.logger import logger
 
 
 router = APIRouter(prefix="/articles", tags=["articles"])
 
+# =======================================================================
+# ADMIN-ONLY ENDPOINTS (Demonstração do sistema de verificação de admin)
+# =======================================================================
+
+@router.get("/admin/all")
+async def get_all_articles_for_admin(
+    page: int = 1,
+    page_size: int = 50,
+    admin_user_id: str = Depends(require_global_admin)
+) -> Dict[str, Any]:
+    """
+    ADMIN ONLY: Get ALL articles from ALL accounts (bypasses normal RLS restrictions).
+    
+    This endpoint demonstrates the use of the global admin verification system.
+    Only users with global admin privileges can access this endpoint.
+    """
+    try:
+        from services.supabase import create_supabase_admin_client
+        
+        logger.info(f"Admin {admin_user_id} accessing all articles (admin view)")
+        
+        # Use admin client to bypass normal RLS restrictions
+        admin_client = await create_supabase_admin_client()
+        
+        # Query ALL articles regardless of visibility or account
+        query = admin_client.table('articles').select(
+            '*, '
+            'account:accounts!account_id(id, name, slug), '
+            'author:profiles!created_by_user_id(id, email, full_name)',
+            count='exact'
+        )
+        
+        # Apply pagination
+        offset = (page - 1) * page_size
+        query = query.range(offset, offset + page_size - 1)
+        
+        # Order by creation date (newest first)
+        query = query.order('created_at', desc=True)
+        
+        # Execute query
+        result = await query.execute()
+        
+        # Close admin client
+        await admin_client.close()
+        
+        logger.info(f"Admin {admin_user_id} retrieved {len(result.data or [])} articles from admin view")
+        
+        return {
+            'articles': result.data,
+            'total_count': result.count,
+            'page': page,
+            'page_size': page_size,
+            'has_more': offset + page_size < result.count,
+            'admin_view': True,
+            'accessed_by_admin': admin_user_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting all articles for admin: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get articles for admin"
+        )
+
+@router.post("/admin/{article_id}/force-publish")
+async def force_publish_article_admin(
+    article_id: str,
+    admin_user_id: str = Depends(require_global_admin)
+) -> Dict[str, Any]:
+    """
+    ADMIN ONLY: Force publish any article regardless of author permissions.
+    
+    This endpoint demonstrates admin override capabilities.
+    """
+    try:
+        from services.supabase import create_supabase_admin_client
+        
+        logger.info(f"Admin {admin_user_id} force publishing article {article_id}")
+        
+        # Use admin client to bypass normal restrictions
+        admin_client = await create_supabase_admin_client()
+        
+        # Check if article exists
+        article_result = await admin_client.table('articles').select('id, title, status').eq('id', article_id).execute()
+        
+        if not article_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Article not found"
+            )
+        
+        article = article_result.data[0]
+        
+        # Force update status to published and visibility to public
+        update_result = await admin_client.table('articles').update({
+            'status': 'published',
+            'visibility': 'public',
+            'updated_at': 'now()'
+        }).eq('id', article_id).execute()
+        
+        # Close admin client
+        await admin_client.close()
+        
+        logger.info(f"Admin {admin_user_id} successfully force published article {article_id}")
+        
+        return {
+            'message': 'Article force published successfully',
+            'article_id': article_id,
+            'article_title': article['title'],
+            'previous_status': article['status'],
+            'new_status': 'published',
+            'admin_action_by': admin_user_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error force publishing article {article_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to force publish article"
+        )
+
+# =======================================================================
+# REGULAR USER ENDPOINTS (Existing functionality)
+# =======================================================================
 
 @router.post("/")
 async def create_article(
