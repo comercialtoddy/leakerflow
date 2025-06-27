@@ -333,6 +333,65 @@ class AdminApiClient {
       throw new Error(error instanceof Error ? error.message : 'Failed to export analytics report');
     }
   }
+
+  // Article management methods
+  async getArticles(params?: {
+    skip?: number;
+    limit?: number;
+    status?: string;
+    visibility?: string;
+    search?: string;
+    category?: string;
+  }): Promise<ApiResponse<{ articles: any[]; total: number; skip: number; limit: number; hasMore: boolean }>> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `/articles?${queryString}` : '/articles';
+    
+    return this.makeRequest(endpoint);
+  }
+
+  async getArticle(articleId: string): Promise<ApiResponse<any>> {
+    return this.makeRequest(`/articles/${articleId}`);
+  }
+
+  async updateArticle(articleId: string, updates: any): Promise<ApiResponse<any>> {
+    return this.makeRequest(`/articles/${articleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteArticle(articleId: string): Promise<ApiResponse> {
+    return this.makeRequest(`/articles/${articleId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async archiveArticle(articleId: string): Promise<ApiResponse<any>> {
+    return this.makeRequest(`/articles/${articleId}/archive`, {
+      method: 'POST',
+    });
+  }
+
+  async publishArticle(articleId: string): Promise<ApiResponse<any>> {
+    return this.updateArticle(articleId, { status: 'published' });
+  }
+
+  async unpublishArticle(articleId: string): Promise<ApiResponse<any>> {
+    return this.updateArticle(articleId, { status: 'draft' });
+  }
+
+  async changeArticleVisibility(articleId: string, visibility: 'private' | 'account' | 'public'): Promise<ApiResponse<any>> {
+    return this.updateArticle(articleId, { visibility });
+  }
 }
 
 export const adminApi = new AdminApiClient();

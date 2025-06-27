@@ -74,183 +74,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Mock data for articles
-const mockArticles = [
-  {
-    id: '1',
-    title: 'Breaking: Major Tech Announcement Expected This Week',
-    author: 'Tech Reporter',
-    author_email: 'tech@example.com',
-    account_name: 'TechNews Daily',
-    status: 'published',
-    category: 'official',
-    created_at: '2024-12-20T10:30:00Z',
-    updated_at: '2024-12-20T11:00:00Z',
-    views: 15420,
-    engagement: 8.5,
-    reports_count: 0,
-    tags: ['tech', 'announcement', 'breaking']
-  },
-  {
-    id: '2',
-    title: 'Rumor: New Product Line Coming Soon',
-    author: 'Anonymous Source',
-    author_email: 'source@rumor.com',
-    account_name: 'Leak Central',
-    status: 'published',
-    category: 'rumor',
-    created_at: '2024-12-19T14:20:00Z',
-    updated_at: '2024-12-19T15:45:00Z',
-    views: 8920,
-    engagement: 6.2,
-    reports_count: 2,
-    tags: ['rumor', 'product', 'leak']
-  },
-  {
-    id: '3',
-    title: 'Draft: Analysis of Market Trends',
-    author: 'Market Analyst',
-    author_email: 'analyst@market.com',
-    account_name: 'Finance Insights',
-    status: 'draft',
-    category: 'community',
-    created_at: '2024-12-18T09:15:00Z',
-    updated_at: '2024-12-20T08:30:00Z',
-    views: 0,
-    engagement: 0,
-    reports_count: 0,
-    tags: ['analysis', 'market', 'trends']
-  },
-  {
-    id: '4',
-    title: 'Community Discussion: Best Practices',
-    author: 'Community Lead',
-    author_email: 'community@example.com',
-    account_name: 'Community Hub',
-    status: 'published',
-    category: 'community',
-    created_at: '2024-12-17T16:45:00Z',
-    updated_at: '2024-12-17T18:20:00Z',
-    views: 3245,
-    engagement: 12.1,
-    reports_count: 1,
-    tags: ['community', 'discussion', 'practices']
-  },
-  {
-    id: '5',
-    title: 'Archived: Old News Archive',
-    author: 'Archive Bot',
-    author_email: 'archive@system.com',
-    account_name: 'System Archive',
-    status: 'archived',
-    category: 'official',
-    created_at: '2024-11-15T12:00:00Z',
-    updated_at: '2024-12-01T10:00:00Z',
-    views: 25630,
-    engagement: 15.7,
-    reports_count: 0,
-    tags: ['archive', 'old', 'news']
-  }
-];
-
-// API integration functions
-const fetchArticles = async (params: {
-  skip?: number;
-  limit?: number;
-  status?: string;
-  visibility?: string;
-  search?: string;
-}) => {
-  const queryParams = new URLSearchParams();
-  if (params.skip) queryParams.append('skip', params.skip.toString());
-  if (params.limit) queryParams.append('limit', params.limit.toString());
-  if (params.status && params.status !== 'all') queryParams.append('status', params.status);
-  if (params.visibility && params.visibility !== 'all') queryParams.append('visibility', params.visibility);
-  if (params.search) queryParams.append('search', params.search);
-
-  try {
-    const response = await fetch(`/api/admin/articles?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch articles');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching articles:', error);
-    // Fall back to mock data for demo
-    return mockArticles;
-  }
-};
-
-const updateArticle = async (articleId: string, updates: any) => {
-  try {
-    const response = await fetch(`/api/admin/articles/${articleId}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updates),
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to update article');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error updating article:', error);
-    throw error;
-  }
-};
-
-const deleteArticle = async (articleId: string) => {
-  try {
-    const response = await fetch(`/api/admin/articles/${articleId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to delete article');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error deleting article:', error);
-    throw error;
-  }
-};
-
-const archiveArticle = async (articleId: string) => {
-  try {
-    const response = await fetch(`/api/admin/articles/${articleId}/archive`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to archive article');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error archiving article:', error);
-    throw error;
-  }
-};
+import { adminApi } from '@/lib/api/admin';
 
 interface FilterState {
   search: string;
@@ -264,7 +88,7 @@ interface FilterState {
 }
 
 interface SortConfig {
-  key: keyof typeof mockArticles[0] | null;
+  key: string | null;
   direction: 'asc' | 'desc';
 }
 
@@ -274,8 +98,9 @@ interface ArticleModerationPanelProps {
 
 export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPanelProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [articles, setArticles] = useState<typeof mockArticles>(mockArticles);
-  const [selectedArticle, setSelectedArticle] = useState<typeof mockArticles[0] | null>(null);
+  const [articles, setArticles] = useState<any[]>([]);
+  const [totalArticles, setTotalArticles] = useState(0);
+  const [selectedArticle, setSelectedArticle] = useState<any | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -305,105 +130,48 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
     const loadArticles = async () => {
       setIsLoading(true);
       try {
-        const data = await fetchArticles({
+        const response = await adminApi.getArticles({
           skip: (currentPage - 1) * pageSize,
           limit: pageSize,
-          status: filters.status,
-          search: filters.search
+          status: filters.status !== 'all' ? filters.status : undefined,
+          search: filters.search || undefined,
+          category: filters.category !== 'all' ? filters.category : undefined
         });
-        setArticles(data);
+        
+        if (response.data) {
+          setArticles(response.data.articles);
+          setTotalArticles(response.data.total);
+        } else if (response.error) {
+          console.error('API Error:', response.error);
+          setArticles([]);
+          setTotalArticles(0);
+        }
       } catch (error) {
         console.error('Failed to load articles:', error);
-        // Keep using mock data as fallback
+        setArticles([]);
+        setTotalArticles(0);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadArticles();
-  }, [filters.search, filters.status, currentPage, pageSize]);
+  }, [filters.search, filters.status, filters.category, currentPage, pageSize]);
 
-  // Filter and sort articles
-  const filteredAndSortedArticles = useMemo(() => {
-    let filtered = [...articles];
+  // Note: Filtering and sorting are now handled by the backend API
+  // The articles state contains the already filtered and paginated results
 
-    // Apply filters
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(article => 
-        article.title.toLowerCase().includes(searchLower) ||
-        article.author.toLowerCase().includes(searchLower) ||
-        article.account_name.toLowerCase().includes(searchLower)
-      );
-    }
+  // Pagination (since we're getting paginated data from the API, we don't need to filter/sort here)
+  const totalPages = Math.ceil(totalArticles / pageSize);
+  const paginatedArticles = articles; // Already paginated from API
 
-    if (filters.status !== 'all') {
-      filtered = filtered.filter(article => article.status === filters.status);
-    }
-
-    if (filters.category !== 'all') {
-      filtered = filtered.filter(article => article.category === filters.category);
-    }
-
-    if (filters.author) {
-      const authorLower = filters.author.toLowerCase();
-      filtered = filtered.filter(article => 
-        article.author.toLowerCase().includes(authorLower) ||
-        article.author_email.toLowerCase().includes(authorLower)
-      );
-    }
-
-    if (filters.dateFrom) {
-      filtered = filtered.filter(article => 
-        new Date(article.created_at) >= new Date(filters.dateFrom)
-      );
-    }
-
-    if (filters.dateTo) {
-      filtered = filtered.filter(article => 
-        new Date(article.created_at) <= new Date(filters.dateTo)
-      );
-    }
-
-    if (filters.minReports) {
-      const min = parseInt(filters.minReports) || 0;
-      filtered = filtered.filter(article => article.reports_count >= min);
-    }
-
-    if (filters.maxReports) {
-      const max = parseInt(filters.maxReports) || Infinity;
-      filtered = filtered.filter(article => article.reports_count <= max);
-    }
-
-    // Apply sorting
-    if (sortConfig.key) {
-      filtered.sort((a, b) => {
-        const aValue = a[sortConfig.key!];
-        const bValue = b[sortConfig.key!];
-        
-        if (aValue < bValue) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
-        }
-        if (aValue > bValue) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
-        }
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [filters, sortConfig]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredAndSortedArticles.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedArticles = filteredAndSortedArticles.slice(startIndex, startIndex + pageSize);
-
-  const handleSort = (key: keyof typeof mockArticles[0]) => {
+  const handleSort = (key: string) => {
     setSortConfig(current => ({
-      key,
+      key: key as any,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
     }));
+    // Reset to first page when sorting changes
+    setCurrentPage(1);
   };
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
@@ -448,13 +216,19 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
       
       switch (action) {
         case 'delete':
-          result = await deleteArticle(articleId);
+          result = await adminApi.deleteArticle(articleId);
+          if (result.error) {
+            throw new Error(result.error);
+          }
           // Remove from local state
           setArticles(prev => prev.filter(article => article.id !== articleId));
           break;
           
         case 'archive':
-          result = await archiveArticle(articleId);
+          result = await adminApi.archiveArticle(articleId);
+          if (result.error) {
+            throw new Error(result.error);
+          }
           // Update local state
           setArticles(prev => prev.map(article => 
             article.id === articleId 
@@ -464,7 +238,10 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
           break;
           
         case 'publish':
-          result = await updateArticle(articleId, { status: 'published' });
+          result = await adminApi.publishArticle(articleId);
+          if (result.error) {
+            throw new Error(result.error);
+          }
           setArticles(prev => prev.map(article => 
             article.id === articleId 
               ? { ...article, status: 'published' } 
@@ -473,7 +250,10 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
           break;
           
         case 'unpublish':
-          result = await updateArticle(articleId, { status: 'draft' });
+          result = await adminApi.unpublishArticle(articleId);
+          if (result.error) {
+            throw new Error(result.error);
+          }
           setArticles(prev => prev.map(article => 
             article.id === articleId 
               ? { ...article, status: 'draft' } 
@@ -482,7 +262,10 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
           break;
           
         case 'draft':
-          result = await updateArticle(articleId, { status: 'draft' });
+          result = await adminApi.updateArticle(articleId, { status: 'draft' });
+          if (result.error) {
+            throw new Error(result.error);
+          }
           setArticles(prev => prev.map(article => 
             article.id === articleId 
               ? { ...article, status: 'draft' } 
@@ -491,15 +274,56 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
           break;
           
         case 'visibility_public':
-          result = await updateArticle(articleId, { visibility: 'public' });
+          result = await adminApi.changeArticleVisibility(articleId, 'public');
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          setArticles(prev => prev.map(article => 
+            article.id === articleId 
+              ? { ...article, visibility: 'public' } 
+              : article
+          ));
           break;
           
         case 'visibility_account':
-          result = await updateArticle(articleId, { visibility: 'account' });
+          result = await adminApi.changeArticleVisibility(articleId, 'account');
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          setArticles(prev => prev.map(article => 
+            article.id === articleId 
+              ? { ...article, visibility: 'account' } 
+              : article
+          ));
           break;
           
         case 'visibility_private':
-          result = await updateArticle(articleId, { visibility: 'private' });
+          result = await adminApi.changeArticleVisibility(articleId, 'private');
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          setArticles(prev => prev.map(article => 
+            article.id === articleId 
+              ? { ...article, visibility: 'private' } 
+              : article
+          ));
+          break;
+          
+        case 'delete_reports':
+          // TODO: Implement delete reports functionality
+          console.log('Delete reports action not implemented yet');
+          break;
+          
+        case 'undelete':
+          result = await adminApi.updateArticle(articleId, { status: 'published' });
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          setArticles(prev => prev.map(article => 
+            article.id === articleId 
+              ? { ...article, status: 'published' } 
+              : article
+          ));
           break;
           
         default:
@@ -562,11 +386,11 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
       const promises = Array.from(selectedArticles).map(async (articleId) => {
         switch (bulkAction) {
           case 'delete':
-            return await deleteArticle(articleId);
+            return await adminApi.deleteArticle(articleId);
           case 'archive':
-            return await archiveArticle(articleId);
+            return await adminApi.archiveArticle(articleId);
           case 'publish':
-            return await updateArticle(articleId, { status: 'published' });
+            return await adminApi.publishArticle(articleId);
           default:
             throw new Error(`Unknown bulk action: ${bulkAction}`);
         }
@@ -789,7 +613,7 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
-                {filteredAndSortedArticles.length} articles found
+                {totalArticles} articles found
               </span>
               <Button variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
@@ -806,7 +630,7 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Articles ({filteredAndSortedArticles.length})
+              Articles ({totalArticles})
             </span>
             <div className="flex items-center gap-2">
               <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
@@ -1080,7 +904,7 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-muted-foreground">
-                    Showing {startIndex + 1} to {Math.min(startIndex + pageSize, filteredAndSortedArticles.length)} of {filteredAndSortedArticles.length} articles
+                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalArticles)} of {totalArticles} articles
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -1135,7 +959,7 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
               )}
 
               {/* Empty state */}
-              {filteredAndSortedArticles.length === 0 && (
+              {articles.length === 0 && (
                 <div className="text-center py-12">
                   <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">No articles found</h3>
