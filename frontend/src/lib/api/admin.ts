@@ -385,6 +385,24 @@ class AdminApiClient {
     return this.updateArticle(articleId, { status: 'published' });
   }
 
+  // Article Approval System
+  async getPendingArticles(): Promise<ApiResponse<any[]>> {
+    return this.makeRequest('/articles/pending');
+  }
+
+  async approveArticle(articleId: string): Promise<ApiResponse<any>> {
+    return this.makeRequest(`/articles/${articleId}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectArticle(articleId: string, reason?: string): Promise<ApiResponse<any>> {
+    return this.makeRequest(`/articles/${articleId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
   async unpublishArticle(articleId: string): Promise<ApiResponse<any>> {
     return this.updateArticle(articleId, { status: 'draft' });
   }

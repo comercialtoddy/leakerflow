@@ -368,7 +368,7 @@ export default function ArticleEditor() {
     return `${minutes} min read`;
   }, []);
 
-  const handleSave = useCallback(async (saveStatus: 'draft' | 'published' | 'scheduled' = 'draft') => {
+  const handleSave = useCallback(async (saveStatus: 'draft' | 'published' | 'scheduled' | 'pending_approval' = 'draft') => {
     if (!title.trim() || !subtitle.trim() || !author.trim()) {
       toast.error('Please fill in title, subtitle, and author');
       return;
@@ -383,6 +383,16 @@ export default function ArticleEditor() {
       order: index
     }));
 
+    // For approval system: if trying to publish, use pending_approval instead
+    let finalStatus: 'draft' | 'published' | 'archived' | 'scheduled' | 'pending_approval' = saveStatus;
+    let isSubmittingForApproval = false;
+
+    if (saveStatus === 'published') {
+      // Check if user is trying to publish (requires approval)
+      finalStatus = 'pending_approval';
+      isSubmittingForApproval = true;
+    }
+
     const articleData = {
       title: title.trim(),
       subtitle: subtitle.trim(),
@@ -394,7 +404,7 @@ export default function ArticleEditor() {
       media_items: mediaItems, // Keep header image in global media_items
       author: author.trim(),
       read_time: estimateReadTime(mainContent),
-      status: saveStatus,
+      status: finalStatus,
       image_url: mediaItems[0]?.url, // Use header image from mediaItems
       publish_date: (saveStatus === 'published' || saveStatus === 'scheduled') ? publishDate : undefined,
     };
@@ -403,20 +413,49 @@ export default function ArticleEditor() {
     console.log('=== SAVE ARTICLE DEBUG ===');
     console.log('Article ID:', articleId);
     console.log('Is editing:', isEditing);
+    console.log('Original status request:', saveStatus);
+    console.log('Final status:', finalStatus);
+    console.log('Is submitting for approval:', isSubmittingForApproval);
     console.log('Sections count:', orderedSections.length);
     console.log('Sections data:', orderedSections);
     console.log('Header image:', mediaItems[0]?.url);
 
     try {
       if (isEditing && articleId) {
-        await updateArticleMutation.mutateAsync({
-          id: articleId,
-          ...articleData,
-        });
-        toast.success('Article updated successfully!');
+        // Handle existing article updates
+        if (saveStatus === 'published' && status === 'draft') {
+          // Article is changing from draft to published - submit for approval
+          await updateArticleMutation.mutateAsync({
+            id: articleId,
+            ...articleData,
+          });
+          toast.success('Article submitted for admin approval!', {
+            description: 'Your article will be reviewed by an administrator before being published.'
+          });
+        } else {
+          // Regular update (draft to draft, or other changes)
+          await updateArticleMutation.mutateAsync({
+            id: articleId,
+            ...articleData,
+          });
+          if (isSubmittingForApproval) {
+            toast.success('Article submitted for admin approval!', {
+              description: 'Your article will be reviewed by an administrator before being published.'
+            });
+          } else {
+            toast.success('Article updated successfully!');
+          }
+        }
       } else {
+        // Creating new article
         await createArticleMutation.mutateAsync(articleData);
-        toast.success('Article created successfully!');
+        if (isSubmittingForApproval) {
+          toast.success('Article submitted for admin approval!', {
+            description: 'Your article will be reviewed by an administrator before being published.'
+          });
+        } else {
+          toast.success('Article created successfully!');
+        }
         router.push('/articles');
       }
     } catch (error) {
@@ -699,12 +738,12 @@ export default function ArticleEditor() {
               {(createArticleMutation.isPending || updateArticleMutation.isPending) ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Publishing...
+                  Submitting...
                 </>
               ) : (
                 <>
                   <Globe className="mr-2 h-4 w-4" />
-                  Publish
+                  Submit for Approval
                 </>
               )}
             </Button>

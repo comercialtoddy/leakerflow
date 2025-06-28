@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/card';
 import Link from 'next/link';
 import { useAdminUI } from '@/contexts/AdminContext';
+import { ArticleApprovalPanel } from '@/components/admin/ArticleApprovalPanel';
 
 import { adminApi } from '@/lib/api/admin';
 import { useQuery } from '@tanstack/react-query';
@@ -84,7 +85,16 @@ function AdminDashboardContent() {
     queryKey: ['admin-analytics-overview', selectedTimeRange],
     queryFn: async () => {
       const response = await adminApi.getAnalyticsOverview(selectedTimeRange as any);
-      return response.data;
+      return response.data || {
+        total_articles: 0,
+        total_authors: 0,
+        total_users: 0,
+        total_views: 0,
+        articles_this_month: 0,
+        new_authors_this_month: 0,
+        application_approval_rate: 0,
+        average_engagement_rate: 0
+      };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -93,7 +103,7 @@ function AdminDashboardContent() {
     queryKey: ['admin-articles-count'],
     queryFn: async () => {
       const response = await adminApi.getArticles({ limit: 1 });
-      return response.data;
+      return response.data || { articles: [], total: 0 };
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -102,7 +112,7 @@ function AdminDashboardContent() {
     queryKey: ['admin-applications-count'],
     queryFn: async () => {
       const response = await adminApi.getApplications({ limit: 1 });
-      return response.data;
+      return response.data || [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -304,6 +314,15 @@ function AdminDashboardContent() {
               </p>
             </CardContent>
           </Card>
+        </motion.div>
+
+        {/* Article Approval Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+        >
+          <ArticleApprovalPanel />
         </motion.div>
 
         {/* Admin Navigation Cards */}

@@ -36,7 +36,7 @@ export interface CreateArticleData {
   category: string;
   tags: string[];
   author: string;
-  status: 'draft' | 'published' | 'archived' | 'scheduled';
+  status: 'draft' | 'published' | 'archived' | 'scheduled' | 'pending_approval';
   media_items: any[];
   sources: any[];
   sections?: ArticleSection[];
@@ -640,6 +640,7 @@ export class ArticlesService {
       const validatedData = await this.validatePayloadSize(articleData, articleId);
 
       // Determine visibility based on status
+      // Only 'published' articles get 'public' visibility, everything else stays 'account'
       const visibility = validatedData.status === 'published' ? 'public' : 'account';
 
       // Clean the data to only include fields that exist in the database
@@ -845,6 +846,85 @@ export class ArticlesService {
       return true;
     } catch (error) {
       console.error('Error deleting article:', error);
+      throw error;
+    }
+  }
+
+  // =======================
+  // ARTICLE APPROVAL SYSTEM
+  // =======================
+
+  // Submit article for approval
+  async submitArticleForApproval(articleId: string) {
+    try {
+      const { data, error } = await this.supabase.rpc('submit_article_for_approval', {
+        article_id: articleId
+      });
+
+      if (error) {
+        console.error('Error submitting article for approval:', error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error submitting article for approval:', error);
+      throw error;
+    }
+  }
+
+  // Get pending articles (admin only)
+  async getPendingArticles() {
+    try {
+      const { data, error } = await this.supabase.rpc('get_pending_articles');
+
+      if (error) {
+        console.error('Error getting pending articles:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error getting pending articles:', error);
+      throw error;
+    }
+  }
+
+  // Approve article (admin only)
+  async approveArticle(articleId: string) {
+    try {
+      const { data, error } = await this.supabase.rpc('approve_article', {
+        article_id: articleId
+      });
+
+      if (error) {
+        console.error('Error approving article:', error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error approving article:', error);
+      throw error;
+    }
+  }
+
+  // Reject article (admin only)
+  async rejectArticle(articleId: string, reason?: string) {
+    try {
+      const { data, error } = await this.supabase.rpc('reject_article', {
+        article_id: articleId,
+        reason: reason || null
+      });
+
+      if (error) {
+        console.error('Error rejecting article:', error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error rejecting article:', error);
       throw error;
     }
   }

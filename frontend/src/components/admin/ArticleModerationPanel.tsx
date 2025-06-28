@@ -442,18 +442,22 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
     const variants = {
       published: 'default',
       draft: 'secondary',
-      archived: 'outline'
+      archived: 'outline',
+      pending_approval: 'secondary'
     } as const;
 
     const colors = {
       published: 'bg-green-100 text-green-800 hover:bg-green-200',
       draft: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
-      archived: 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+      archived: 'bg-gray-100 text-gray-800 hover:bg-gray-200',
+      pending_approval: 'bg-orange-100 text-orange-800 hover:bg-orange-200'
     } as const;
+
+    const displayText = status === 'pending_approval' ? 'Pending Approval' : status.charAt(0).toUpperCase() + status.slice(1);
 
     return (
       <Badge className={colors[status as keyof typeof colors] || colors.draft}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {displayText}
       </Badge>
     );
   };
@@ -526,6 +530,7 @@ export function ArticleModerationPanel({ onArticleAction }: ArticleModerationPan
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="published">Published</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="pending_approval">Pending Approval</SelectItem>
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
