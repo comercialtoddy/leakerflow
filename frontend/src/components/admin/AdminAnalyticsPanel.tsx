@@ -83,7 +83,10 @@ export function AdminAnalyticsPanel() {
   });
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  const formatNumber = (num: number) => {
+  const formatNumber = (num: number | undefined | null) => {
+    if (num === undefined || num === null || isNaN(num)) {
+      return '0';
+    }
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M';
     }
@@ -93,17 +96,26 @@ export function AdminAnalyticsPanel() {
     return num.toLocaleString();
   };
 
-  const formatPercentage = (num: number) => {
+  const formatPercentage = (num: number | undefined | null) => {
+    if (num === undefined || num === null || isNaN(num)) {
+      return '0.0%';
+    }
     return num.toFixed(1) + '%';
   };
 
-  const getChangeIcon = (change: number) => {
+  const getChangeIcon = (change: number | undefined | null) => {
+    if (change === undefined || change === null || isNaN(change)) {
+      return <Minus className="w-4 h-4 text-gray-400" />;
+    }
     if (change > 0) return <ArrowUp className="w-4 h-4 text-green-600" />;
     if (change < 0) return <ArrowDown className="w-4 h-4 text-red-600" />;
     return <Minus className="w-4 h-4 text-gray-400" />;
   };
 
-  const getChangeColor = (change: number) => {
+  const getChangeColor = (change: number | undefined | null) => {
+    if (change === undefined || change === null || isNaN(change)) {
+      return 'text-gray-400';
+    }
     if (change > 0) return 'text-green-600';
     if (change < 0) return 'text-red-600';
     return 'text-gray-400';
@@ -175,84 +187,67 @@ export function AdminAnalyticsPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Time Range & Filters */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <BarChart3 className="h-8 w-8" />
-              Analytics Dashboard
-            </h2>
-            <p className="text-muted-foreground">
-              Comprehensive platform metrics, trends, and performance insights
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleExportData('csv')} disabled={isLoading}>
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExportData('json')} disabled={isLoading}>
-              <Download className="h-4 w-4 mr-2" />
-              Export JSON
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleRefreshData} disabled={isLoading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Time Range & Filters */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
         <Card>
           <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-              <div className="flex flex-wrap gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="time-range">Time Range</Label>
-                  <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="7d">Last 7 days</SelectItem>
-                      <SelectItem value="30d">Last 30 days</SelectItem>
-                      <SelectItem value="90d">Last 90 days</SelectItem>
-                      <SelectItem value="1y">Last year</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+                <div className="flex flex-wrap gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="time-range">Time Range</Label>
+                    <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7d">Last 7 days</SelectItem>
+                        <SelectItem value="30d">Last 30 days</SelectItem>
+                        <SelectItem value="90d">Last 90 days</SelectItem>
+                        <SelectItem value="1y">Last year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        {data.categories?.map(category => (
+                          <SelectItem key={category.name} value={category.name.toLowerCase()}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {data.categories?.map(category => (
-                        <SelectItem key={category.name} value={category.name.toLowerCase()}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Badge variant="outline" className="text-sm">
+                  <Calendar className="w-4 h-4 mr-1" />
+                  Updated {lastUpdated.toLocaleTimeString()}
+                </Badge>
               </div>
-              <Badge variant="outline" className="text-sm">
-                <Calendar className="w-4 h-4 mr-1" />
-                Updated {lastUpdated.toLocaleTimeString()}
-              </Badge>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleExportData('csv')} disabled={isLoading}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleExportData('json')} disabled={isLoading}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export JSON
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleRefreshData} disabled={isLoading}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -262,7 +257,7 @@ export function AdminAnalyticsPanel() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
         className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
         <Card>
@@ -350,7 +345,7 @@ export function AdminAnalyticsPanel() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
         className="grid gap-6 lg:grid-cols-2"
       >
         {/* Articles Trend Chart */}
@@ -373,7 +368,7 @@ export function AdminAnalyticsPanel() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.35 }}
+          transition={{ duration: 0.5, delay: 0.25 }}
         >
           <ApplicationsBarChart 
             data={data.applications.monthly_submissions}
@@ -385,7 +380,7 @@ export function AdminAnalyticsPanel() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
         className="grid gap-6 lg:grid-cols-3"
       >
         {/* Top Authors */}
@@ -503,7 +498,7 @@ export function AdminAnalyticsPanel() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
       >
         <Card>
           <CardHeader>

@@ -228,10 +228,12 @@ function AdminDashboardContent() {
               <option value="30d">Last 30 days</option>
               <option value="90d">Last 90 days</option>
             </select>
-            <Button variant="outline">
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Full Analytics
-            </Button>
+            <Link href="/admin/analytics">
+              <Button variant="outline">
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Full Analytics
+              </Button>
+            </Link>
           </div>
         </motion.div>
 
@@ -334,33 +336,43 @@ function AdminDashboardContent() {
         >
           {adminNavigation.map((item, index) => (
             <Link key={item.href} href={item.href}>
-              <Card className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/20">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`h-10 w-10 rounded-full ${item.bgColor} flex items-center justify-center`}>
-                        <item.icon className={`h-5 w-5 ${item.color}`} />
+              <Card className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/20 h-full">
+                <CardHeader className="h-full">
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-10 w-10 rounded-full ${item.bgColor} flex items-center justify-center flex-shrink-0`}>
+                          <item.icon className={`h-5 w-5 ${item.color}`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                            {item.title}
+                          </CardTitle>
+                        </div>
                       </div>
-                      <div>
-                        <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                          {item.title}
-                        </CardTitle>
-                        <CardDescription className="text-sm">
-                          {item.description}
-                        </CardDescription>
+                      <div className="text-right flex-shrink-0">
+                        {item.count !== undefined ? (
+                          <div className="text-2xl font-bold text-muted-foreground">
+                            {item.count}
+                          </div>
+                        ) : (
+                          <div className="text-2xl font-bold text-transparent">
+                            0
+                          </div>
+                        )}
+                        {item.badge ? (
+                          <Badge variant="secondary" className="mt-1">
+                            {item.badge}
+                          </Badge>
+                        ) : (
+                          <div className="mt-1 h-6"></div>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      {item.count !== undefined && (
-                        <div className="text-2xl font-bold text-muted-foreground">
-                          {item.count}
-                        </div>
-                      )}
-                      {item.badge && (
-                        <Badge variant="secondary" className="mt-1">
-                          {item.badge}
-                        </Badge>
-                      )}
+                    <div className="flex-1">
+                      <CardDescription className="text-sm leading-relaxed">
+                        {item.description}
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
