@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users,
+  User,
   Search,
   Filter,
   Calendar,
@@ -27,7 +28,8 @@ import {
   Globe,
   MessageSquare,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Loader2
 } from 'lucide-react';
 import {
   Table,
@@ -72,182 +74,68 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { adminApi } from '@/lib/api/admin';
+import { AdminService, type AuthorApplicationAdmin, type ApplicationStats } from '@/lib/supabase/admin';
+import { toast } from 'sonner';
 
-// Mock data for development - replace with actual API calls
-const mockApplications = [
-  {
-    id: 1,
-    fullName: 'Sarah Chen',
-    email: 'sarah.chen@techwriter.com',
-    status: 'pending',
-    submittedAt: '2024-01-15',
-    bio: 'Experienced technology journalist with 8+ years covering AI, blockchain, and cybersecurity. Former senior writer at TechCrunch and Wired.',
-    expertiseAreas: ['Artificial Intelligence', 'Blockchain', 'Cybersecurity', 'Fintech'],
-    portfolioUrl: 'https://sarahchen.dev',
-    sampleArticles: [
-      'https://techcrunch.com/ai-revolution-2024',
-      'https://wired.com/blockchain-security-analysis',
-      'https://medium.com/@sarahchen/cybersecurity-trends'
-    ],
-    motivation: 'I want to contribute to the platform by sharing insights on emerging technologies and helping readers understand complex tech concepts through clear, engaging content.',
-    socialMedia: {
-      twitter: '@sarahchen_tech',
-      linkedin: 'sarah-chen-journalist'
-    },
-    previousExperience: 'Senior Tech Writer at TechCrunch (2020-2024), Staff Writer at Wired (2018-2020)',
-    education: 'MS Computer Science, Stanford University',
-    writingSamples: 3,
-    averageViews: 25000,
-    reviewedBy: null,
-    rejectionReason: null
-  },
-  {
-    id: 2,
-    fullName: 'Marcus Rodriguez',
-    email: 'marcus.r@freelance.com',
-    status: 'under_review',
-    submittedAt: '2024-01-10',
-    bio: 'Freelance technology writer specializing in emerging tech trends, startup coverage, and developer tools.',
-    expertiseAreas: ['Startups', 'Developer Tools', 'Cloud Computing', 'Mobile Tech'],
-    portfolioUrl: 'https://marcusrodriguez.io',
-    sampleArticles: [
-      'https://techblog.com/startup-trends-2024',
-      'https://devtools.com/cloud-native-development'
-    ],
-    motivation: 'I have been following tech startups for 5 years and want to share my insights about the startup ecosystem and emerging developer tools.',
-    socialMedia: {
-      twitter: '@marcus_tech_writer',
-      linkedin: 'marcus-rodriguez-tech'
-    },
-    previousExperience: 'Freelance Tech Writer (2019-present), Contributing Writer at The Next Web',
-    education: 'BA Journalism, University of California',
-    writingSamples: 2,
-    averageViews: 15000,
-    reviewedBy: 'admin-1',
-    rejectionReason: null
-  },
-  {
-    id: 3,
-    fullName: 'Elena Kowalski',
-    email: 'elena.k@techanalyst.com',
-    status: 'approved',
-    submittedAt: '2024-01-05',
-    reviewedAt: '2024-01-08',
-    bio: 'Technology analyst and content creator focusing on enterprise software, SaaS platforms, and digital transformation.',
-    expertiseAreas: ['Enterprise Software', 'SaaS', 'Digital Transformation', 'Business Tech'],
-    portfolioUrl: 'https://elenakowalski.com',
-    sampleArticles: [
-      'https://enterprise-tech.com/saas-evolution',
-      'https://digital-transform.com/enterprise-adoption',
-      'https://business-tech.com/remote-work-tools'
-    ],
-    motivation: 'I want to help business leaders understand how to leverage technology for growth and transformation.',
-    socialMedia: {
-      twitter: '@elena_techanalyst',
-      linkedin: 'elena-kowalski-analyst'
-    },
-    previousExperience: 'Senior Analyst at Gartner (2017-2023), Tech Consultant',
-    education: 'MBA Technology Management, MIT Sloan',
-    writingSamples: 3,
-    averageViews: 30000,
-    reviewedBy: 'admin-2',
-    rejectionReason: null
-  },
-  {
-    id: 4,
-    fullName: 'David Thompson',
-    email: 'david.t@contentcreator.com',
-    status: 'rejected',
-    submittedAt: '2024-01-01',
-    reviewedAt: '2024-01-03',
-    bio: 'Content creator and blogger covering general technology topics and product reviews.',
-    expertiseAreas: ['Product Reviews', 'Consumer Tech', 'Gadgets'],
-    portfolioUrl: 'https://davidthompson.blog',
-    sampleArticles: [
-      'https://techblog.com/iphone-review',
-      'https://gadgetreview.com/laptop-comparison'
-    ],
-    motivation: 'I love technology and want to share my thoughts on the latest gadgets and products.',
-    socialMedia: {
-      twitter: '@david_tech_blog'
-    },
-    previousExperience: 'Tech Blogger (2022-present)',
-    education: 'High School Diploma',
-    writingSamples: 2,
-    averageViews: 5000,
-    reviewedBy: 'admin-1',
-    rejectionReason: 'Content quality does not meet our editorial standards. Writing samples lack depth and technical expertise.'
-  },
-  {
-    id: 5,
-    fullName: 'Ashi Patel',
-    email: 'ashi.patel@techwriter.in',
-    status: 'pending',
-    submittedAt: '2024-01-12',
-    bio: 'International technology correspondent covering the global tech ecosystem, with expertise in emerging markets and tech policy.',
-    expertiseAreas: ['Tech Policy', 'Emerging Markets', 'International Tech', 'Regulations'],
-    portfolioUrl: 'https://ashipatel.com',
-    sampleArticles: [
-      'https://techpolicy.com/india-digital-transformation',
-      'https://emerging-markets.com/fintech-adoption',
-      'https://global-tech.com/regulatory-landscape'
-    ],
-    motivation: 'I want to provide a global perspective on technology trends and help readers understand how tech policies affect different markets.',
-    socialMedia: {
-      twitter: '@ashi_global_tech',
-      linkedin: 'ashi-patel-tech-correspondent'
-    },
-    previousExperience: 'Tech Correspondent at Reuters (2019-2024), Policy Analyst at Tech Freedom',
-    education: 'MA International Relations, London School of Economics',
-    writingSamples: 3,
-    averageViews: 20000,
-    reviewedBy: null,
-    rejectionReason: null
-  }
-] as Application[];
-
-interface Application {
-  id: number;
-  fullName: string;
-  email: string;
-  status: 'pending' | 'under_review' | 'approved' | 'rejected';
-  submittedAt: string;
-  reviewedAt?: string;
-  bio: string;
-  expertiseAreas: string[];
-  portfolioUrl: string;
-  sampleArticles: string[];
-  motivation: string;
-  socialMedia: {
-    twitter?: string;
-    linkedin?: string;
-  };
-  previousExperience: string;
-  education: string;
-  writingSamples: number;
-  averageViews: number;
-  reviewedBy?: string;
-  rejectionReason?: string;
-}
-
-type SortField = 'fullName' | 'email' | 'submittedAt' | 'status' | 'averageViews' | 'writingSamples';
+// Type definitions
+type SortField = 'submitted_at' | 'full_name' | 'status';
 type SortOrder = 'asc' | 'desc';
 
 export function AuthorApplicationsPanel() {
   // State management
-  const [applications] = useState<Application[]>(mockApplications);
+  const [applications, setApplications] = useState<AuthorApplicationAdmin[]>([]);
+  const [stats, setStats] = useState<ApplicationStats>({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    under_review: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const adminService = new AdminService();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sortField, setSortField] = useState<SortField>('submittedAt');
+  const [sortField, setSortField] = useState<SortField>('submitted_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<AuthorApplicationAdmin | null>(null);
   const [showApplicationDialog, setShowApplicationDialog] = useState(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [isReviewing, setIsReviewing] = useState(false);
+
+  // Load applications on mount
+  useEffect(() => {
+    loadApplications();
+    loadStats();
+  }, [statusFilter]);
+
+  const loadApplications = async () => {
+    try {
+      setIsLoading(true);
+      const data = await adminService.getAuthorApplications({
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        limit: 50
+      });
+      setApplications(data);
+    } catch (error) {
+      console.error('Error loading applications:', error);
+      toast.error('Failed to load applications');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const statsData = await adminService.getApplicationStats();
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  };
 
   // Utility functions
   const formatDate = (dateString: string) => {
@@ -292,343 +180,330 @@ export function AuthorApplicationsPanel() {
 
   // Filtering and sorting logic
   const filteredAndSortedApplications = useMemo(() => {
-    let filtered = applications.filter(application => {
-      // Text search
-      const searchMatch = 
-        application.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        application.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        application.expertiseAreas.some(area => area.toLowerCase().includes(searchTerm.toLowerCase()));
-
-      // Status filter
-      const statusMatch = statusFilter === 'all' || application.status === statusFilter;
-
-      return searchMatch && statusMatch;
+    let filtered = applications.filter(app => {
+      const matchesSearch = !searchTerm || 
+        app.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (app.bio && app.bio.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
     });
 
-    // Sort
+    // Sort applications
     filtered.sort((a, b) => {
-      let aValue: any = a[sortField];
-      let bValue: any = b[sortField];
-
-      // Handle date fields
-      if (sortField === 'submittedAt') {
-        aValue = new Date(aValue);
-        bValue = new Date(bValue);
+      let aValue: any, bValue: any;
+      
+      if (sortField === 'submitted_at') {
+        aValue = new Date(a.submitted_at).getTime();
+        bValue = new Date(b.submitted_at).getTime();
+      } else if (sortField === 'full_name') {
+        aValue = a.full_name.toLowerCase();
+        bValue = b.full_name.toLowerCase();
+      } else if (sortField === 'status') {
+        aValue = a.status;
+        bValue = b.status;
       }
-
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
+      
+      if (sortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
     });
 
     return filtered;
   }, [applications, searchTerm, statusFilter, sortField, sortOrder]);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredAndSortedApplications.length / itemsPerPage);
-  const paginatedApplications = filteredAndSortedApplications.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Pagination logic
+  const paginatedApplications = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAndSortedApplications.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAndSortedApplications, currentPage, itemsPerPage]);
 
-  // Handler functions
+  const totalPages = Math.ceil(filteredAndSortedApplications.length / itemsPerPage);
+
+  // Handlers
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
-      setSortOrder('asc');
+      setSortOrder('desc');
     }
   };
 
-  const handleViewApplication = (application: Application) => {
+  const handleStatusFilterChange = (status: string) => {
+    setStatusFilter(status);
+    setCurrentPage(1);
+  };
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  const handleViewApplication = (application: AuthorApplicationAdmin) => {
     setSelectedApplication(application);
     setShowApplicationDialog(true);
   };
 
-  const handleReviewAction = async (action: 'approve' | 'reject', applicationId: number) => {
-    setIsLoading(true);
+  const handleCloseDialog = () => {
+    setShowApplicationDialog(false);
+    setSelectedApplication(null);
+    setReviewAction(null);
+    setRejectionReason('');
+    setReviewNotes('');
+  };
+
+  const handleReviewAction = async (action: 'approve' | 'reject') => {
+    if (!selectedApplication) return;
+
+    if (action === 'reject' && !rejectionReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
+
     try {
-      let result;
+      setIsReviewing(true);
       
-      if (action === 'approve') {
-        // For approval, we need review notes from the existing rejectionReason state
-        // (we'll reuse this field for review notes in both cases)
-        const reviewNotes = rejectionReason.trim();
-        if (!reviewNotes) {
-          console.error('Review notes are required for approval');
-          return;
-        }
-        result = await adminApi.approveApplication(applicationId.toString(), reviewNotes);
+      const success = await adminService.reviewApplication(
+        selectedApplication.id,
+        action === 'approve' ? 'approved' : 'rejected',
+        reviewNotes.trim() || undefined,
+        action === 'reject' ? rejectionReason.trim() : undefined
+      );
+
+      if (success) {
+        toast.success(`Application ${action}d successfully`);
+        handleCloseDialog();
+        await loadApplications();
+        await loadStats();
       } else {
-        // For rejection, review notes are mandatory
-        const reviewNotes = rejectionReason.trim();
-        if (!reviewNotes) {
-          console.error('Review notes are required for rejection');
-          return;
-        }
-        result = await adminApi.rejectApplication(applicationId.toString(), reviewNotes);
+        toast.error(`Failed to ${action} application`);
       }
-      
-      if (result.error) {
-        throw new Error(result.error);
-      }
-      
-      console.log(`Successfully ${action}ed application:`, result.data);
-      
-      // Reset form and close dialog
-      setReviewAction(null);
-      setRejectionReason('');
-      setShowApplicationDialog(false);
-      
-      // In a real implementation, you'd refresh the applications list
-      // For now, just show success message
-      console.log(`Application ${action}ed successfully!`);
-      
     } catch (error) {
       console.error(`Error ${action}ing application:`, error);
-      console.log(`Failed to ${action} application: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to ${action} application`);
     } finally {
-      setIsLoading(false);
+      setIsReviewing(false);
     }
   };
 
-  const clearFilters = () => {
-    setSearchTerm('');
-    setStatusFilter('all');
-    setSortField('submittedAt');
-    setSortOrder('desc');
-    setCurrentPage(1);
+  const handleRefresh = async () => {
+    await loadApplications();
+    await loadStats();
+    toast.success('Applications refreshed');
   };
 
-  const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-8 text-left justify-start font-medium hover:bg-muted/50"
+  const handleExport = () => {
+    const csvContent = [
+      ['Name', 'Email', 'Status', 'Bio', 'Motivation', 'Submitted At'],
+      ...filteredAndSortedApplications.map(app => [
+        app.full_name,
+        app.email,
+        app.status,
+        app.bio || '',
+        app.motivation,
+        formatDate(app.submitted_at)
+      ])
+    ].map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'author-applications.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Helper component for sortable headers
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead 
+      className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
       onClick={() => handleSort(field)}
     >
-      {children}
-      {sortField === field && (
-        sortOrder === 'asc' ? 
-        <SortAsc className="ml-2 h-4 w-4" /> : 
-        <SortDesc className="ml-2 h-4 w-4" />
-      )}
-    </Button>
+      <div className="flex items-center gap-2">
+        {children}
+        {sortField === field && (
+          sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />
+        )}
+      </div>
+    </TableHead>
   );
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const extractExpertiseFromWritingExperience = (writingExperience?: string) => {
+    if (!writingExperience) return [];
+    
+    // Try to extract expertise areas from writing experience
+    const expertiseMatch = writingExperience.match(/Areas of expertise:\s*(.+?)(?:\n|$)/i);
+    if (expertiseMatch) {
+      return expertiseMatch[1].split(',').map(area => area.trim()).slice(0, 3);
+    }
+    
+    // Fallback: extract technology-related keywords
+    const keywords = ['AI', 'Blockchain', 'Cybersecurity', 'Cloud', 'Mobile', 'Web', 'Data', 'Machine Learning'];
+    const found = keywords.filter(keyword => 
+      writingExperience.toLowerCase().includes(keyword.toLowerCase())
+    ).slice(0, 3);
+    
+    return found.length > 0 ? found : ['Technology'];
+  };
+
+  const getPortfolioLinks = (portfolioLinks?: string[]) => {
+    return portfolioLinks || [];
+  };
+
+  const getSampleCount = (portfolioLinks?: string[]) => {
+    return portfolioLinks ? portfolioLinks.length : 0;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="text-muted-foreground">Loading applications...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <UserCheck className="h-8 w-8" />
-              Author Applications
-            </h2>
-            <p className="text-muted-foreground">
-              Review and manage pending author applications
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setIsLoading(true)}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
+      {/* Header with Actions */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Author Applications</h2>
+          <p className="text-muted-foreground">
+            Review and manage author application requests
+          </p>
         </div>
-      </motion.div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+        </div>
+      </div>
 
-      {/* Statistics Cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
-      >
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Applications</p>
-                <p className="text-2xl font-bold">{applications.length}</p>
+      {/* Filters and Search */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search applications..."
+                  value={searchTerm}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="pl-10 w-full sm:w-80"
+                />
               </div>
-              <FileText className="h-8 w-8 text-muted-foreground ml-auto" />
+              <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="under_review">Under Review</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Pending Review</p>
-                <p className="text-2xl font-bold">{applications.filter(a => a.status === 'pending').length}</p>
-              </div>
-              <Clock className="h-8 w-8 text-amber-600 ml-auto" />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="w-4 h-4" />
+              {filteredAndSortedApplications.length} of {applications.length} applications
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Approved</p>
-                <p className="text-2xl font-bold">{applications.filter(a => a.status === 'approved').length}</p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-green-600 ml-auto" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Rejected</p>
-                <p className="text-2xl font-bold">{applications.filter(a => a.status === 'rejected').length}</p>
-              </div>
-              <XCircle className="h-8 w-8 text-red-600 ml-auto" />
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Filters */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filters & Search
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="search">Search Applications</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="search"
-                    placeholder="Name, email, expertise..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status-filter">Status</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="under_review">Under Review</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 flex items-end">
-                <Button variant="outline" size="sm" onClick={clearFilters}>
-                  Clear Filters
-                </Button>
-                <Badge variant="secondary" className="h-6 ml-2">
-                  {filteredAndSortedApplications.length} result{filteredAndSortedApplications.length !== 1 ? 's' : ''}
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Applications Table */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>Applications ({filteredAndSortedApplications.length})</CardTitle>
-            <CardDescription>
-              Review and manage author application requests
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[250px]">
-                      <SortButton field="fullName">Applicant</SortButton>
-                    </TableHead>
-                    <TableHead>Expertise Areas</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">
-                      <SortButton field="writingSamples">Samples</SortButton>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <SortButton field="averageViews">Avg Views</SortButton>
-                    </TableHead>
-                    <TableHead>
-                      <SortButton field="submittedAt">Submitted</SortButton>
-                    </TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <AnimatePresence mode="wait">
-                    {paginatedApplications.map((application, index) => (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Applications ({filteredAndSortedApplications.length})
+          </CardTitle>
+          <CardDescription>
+            Review and manage author application requests
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="relative w-full overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Applicant</TableHead>
+                  <TableHead>Expertise Areas</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Samples</TableHead>
+                  <TableHead>Avg Views</TableHead>
+                  <SortableHeader field="submitted_at">Submitted</SortableHeader>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <AnimatePresence>
+                  {paginatedApplications.map((application) => {
+                    const expertiseAreas = extractExpertiseFromWritingExperience(application.writing_experience);
+                    const portfolioLinks = getPortfolioLinks(application.portfolio_links);
+                    const sampleCount = getSampleCount(application.portfolio_links);
+                    
+                    return (
                       <motion.tr
                         key={application.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
-                        className="group hover:bg-muted/50"
+                        transition={{ duration: 0.2 }}
+                        className="group hover:bg-muted/50 transition-colors"
                       >
                         <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm">
-                              {application.fullName.split(' ').map(n => n[0]).join('')}
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                              {getInitials(application.full_name)}
                             </div>
                             <div>
-                              <div className="font-medium">{application.fullName}</div>
-                              <div className="text-sm text-muted-foreground flex items-center">
-                                <Mail className="h-3 w-3 mr-1" />
-                                {application.email}
-                              </div>
+                              <div className="font-medium">{application.full_name}</div>
+                              <div className="text-sm text-muted-foreground">{application.email}</div>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {application.expertiseAreas.slice(0, 2).map((area, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
+                          <div className="flex flex-wrap gap-1 max-w-48">
+                            {expertiseAreas.map((area, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
                                 {area}
                               </Badge>
                             ))}
-                            {application.expertiseAreas.length > 2 && (
+                            {expertiseAreas.length > 3 && (
                               <Badge variant="outline" className="text-xs">
-                                +{application.expertiseAreas.length - 2}
+                                +{expertiseAreas.length - 3}
                               </Badge>
                             )}
                           </div>
@@ -636,25 +511,25 @@ export function AuthorApplicationsPanel() {
                         <TableCell>
                           {getStatusBadge(application.status)}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end space-x-1">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{application.writingSamples}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end space-x-1">
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{application.averageViews.toLocaleString()}</span>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-muted-foreground" />
+                            {sampleCount}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{formatDate(application.submittedAt)}</span>
+                          <div className="flex items-center gap-2">
+                            <Eye className="w-4 h-4 text-muted-foreground" />
+                            N/A
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="w-4 h-4" />
+                            {formatDate(application.submitted_at)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" className="h-8 w-8 p-0">
@@ -665,16 +540,20 @@ export function AuthorApplicationsPanel() {
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuItem onClick={() => handleViewApplication(application)}>
                                 <Eye className="mr-2 h-4 w-4" />
-                                Review Application
+                                View Details
                               </DropdownMenuItem>
-                              {(application.status === 'pending' || application.status === 'under_review') && (
+                              {application.status === 'pending' && (
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem 
-                                    onClick={() => handleReviewAction('approve', application.id)}
+                                    onClick={() => {
+                                      setSelectedApplication(application);
+                                      setReviewAction('approve');
+                                      handleReviewAction('approve');
+                                    }}
                                     className="text-green-600"
                                   >
-                                    <ThumbsUp className="mr-2 h-4 w-4" />
+                                    <UserCheck className="mr-2 h-4 w-4" />
                                     Approve
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
@@ -685,7 +564,7 @@ export function AuthorApplicationsPanel() {
                                     }}
                                     className="text-red-600"
                                   >
-                                    <ThumbsDown className="mr-2 h-4 w-4" />
+                                    <UserX className="mr-2 h-4 w-4" />
                                     Reject
                                   </DropdownMenuItem>
                                 </>
@@ -694,325 +573,308 @@ export function AuthorApplicationsPanel() {
                           </DropdownMenu>
                         </TableCell>
                       </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </TableBody>
-              </Table>
-            </div>
+                    );
+                  })}
+                </AnimatePresence>
+              </TableBody>
+            </Table>
+          </div>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between space-x-2 py-4">
-              <div className="flex items-center space-x-2">
-                <Label htmlFor="page-size">Rows per page:</Label>
-                <Select
-                  value={itemsPerPage.toString()}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <div className="flex items-center gap-2">
+                <Label>Items per page:</Label>
+                <Select 
+                  value={itemsPerPage.toString()} 
                   onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
+                    setItemsPerPage(parseInt(value));
                     setCurrentPage(1);
                   }}
                 >
-                  <SelectTrigger className="h-8 w-[70px]">
+                  <SelectTrigger className="w-20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="5">5</SelectItem>
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="25">25</SelectItem>
                     <SelectItem value="50">50</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="flex items-center space-x-6 lg:space-x-8">
-                <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </Button>
+                
+                <span className="text-sm text-muted-foreground">
                   Page {currentPage} of {totalPages}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0"
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage <= 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0"
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage >= totalPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
+                </span>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Application Review Dialog */}
-      <Dialog open={showApplicationDialog} onOpenChange={setShowApplicationDialog}>
+      {/* Application Details Dialog */}
+      <Dialog open={showApplicationDialog} onOpenChange={handleCloseDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <UserCheck className="h-6 w-6" />
-              Application Review: {selectedApplication?.fullName}
+            <DialogTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Application Details
             </DialogTitle>
             <DialogDescription>
-              Complete application details and review options
+              Review the complete author application for {selectedApplication?.full_name}
             </DialogDescription>
           </DialogHeader>
 
           {selectedApplication && (
             <div className="space-y-6">
-              {/* Applicant Profile */}
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Applicant Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="h-16 w-16 rounded-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl">
-                        {selectedApplication.fullName.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-semibold">{selectedApplication.fullName}</h3>
-                        <p className="text-muted-foreground flex items-center">
-                          <Mail className="h-4 w-4 mr-1" />
-                          {selectedApplication.email}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          {getStatusBadge(selectedApplication.status)}
-                        </div>
-                      </div>
+              {/* Application Header */}
+              <div className="flex items-start justify-between p-6 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-lg font-medium">
+                    {getInitials(selectedApplication.full_name)}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold">{selectedApplication.full_name}</h3>
+                    <p className="text-muted-foreground">{selectedApplication.email}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      {getStatusBadge(selectedApplication.status)}
+                      <span className="text-sm text-muted-foreground">
+                        Applied {formatDate(selectedApplication.submitted_at)}
+                      </span>
                     </div>
+                  </div>
+                </div>
+              </div>
 
-                    <Separator />
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Personal Information
+                </h4>
+                <div className="grid gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Bio</Label>
+                    <p className="mt-1 text-sm">{selectedApplication.bio || 'No bio provided'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Writing Experience</Label>
+                    <p className="mt-1 text-sm">{selectedApplication.writing_experience || 'No experience provided'}</p>
+                  </div>
+                </div>
+              </div>
 
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-sm font-medium">Bio</Label>
-                        <p className="text-sm text-muted-foreground mt-1">{selectedApplication.bio}</p>
-                      </div>
-                      
-                      <div>
-                        <Label className="text-sm font-medium">Education</Label>
-                        <p className="text-sm text-muted-foreground mt-1">{selectedApplication.education}</p>
-                      </div>
+              {/* Expertise Areas */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Areas of Expertise
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {extractExpertiseFromWritingExperience(selectedApplication.writing_experience).map((area, index) => (
+                    <Badge key={index} variant="secondary">
+                      {area}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
 
-                      <div>
-                        <Label className="text-sm font-medium">Previous Experience</Label>
-                        <p className="text-sm text-muted-foreground mt-1">{selectedApplication.previousExperience}</p>
-                      </div>
-
-                      <div>
-                        <Label className="text-sm font-medium">Expertise Areas</Label>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {selectedApplication.expertiseAreas.map((area, idx) => (
-                            <Badge key={idx} variant="outline">
-                              {area}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-
-                      {(selectedApplication.socialMedia.twitter || selectedApplication.socialMedia.linkedin) && (
-                        <div>
-                          <Label className="text-sm font-medium">Social Media</Label>
-                          <div className="space-y-2 mt-2">
-                            {selectedApplication.socialMedia.twitter && (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-sm text-muted-foreground">Twitter:</span>
-                                <span className="text-sm">{selectedApplication.socialMedia.twitter}</span>
-                              </div>
-                            )}
-                            {selectedApplication.socialMedia.linkedin && (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-sm text-muted-foreground">LinkedIn:</span>
-                                <span className="text-sm">{selectedApplication.socialMedia.linkedin}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Portfolio & Work</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium">Portfolio URL</Label>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Globe className="h-4 w-4 text-muted-foreground" />
-                        <a 
-                          href={selectedApplication.portfolioUrl} 
-                          target="_blank" 
+              {/* Social Media */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold flex items-center gap-2">
+                  <Globe className="w-5 h-5" />
+                  Social Media & Links
+                </h4>
+                <div className="grid gap-3">
+                  {getPortfolioLinks(selectedApplication.portfolio_links).length > 0 ? (
+                    getPortfolioLinks(selectedApplication.portfolio_links).map((link, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                        <a
+                          href={link}
+                          target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:underline flex items-center"
+                          className="text-sm text-primary hover:underline"
                         >
-                          {selectedApplication.portfolioUrl}
-                          <ExternalLink className="h-3 w-3 ml-1" />
+                          {link}
                         </a>
                       </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-sm font-medium">Sample Articles</Label>
-                      <div className="space-y-2 mt-2">
-                        {selectedApplication.sampleArticles.map((article, idx) => (
-                          <a 
-                            key={idx}
-                            href={article} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline flex items-center"
-                          >
-                            <FileText className="h-3 w-3 mr-2" />
-                            {article}
-                            <ExternalLink className="h-3 w-3 ml-1" />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 grid-cols-2">
-                      <div className="text-center p-4 bg-muted rounded-lg">
-                        <FileText className="h-6 w-6 mx-auto text-blue-600 mb-2" />
-                        <div className="text-xl font-bold">{selectedApplication.writingSamples}</div>
-                        <div className="text-sm text-muted-foreground">Writing Samples</div>
-                      </div>
-                      <div className="text-center p-4 bg-muted rounded-lg">
-                        <Eye className="h-6 w-6 mx-auto text-green-600 mb-2" />
-                        <div className="text-xl font-bold">{selectedApplication.averageViews.toLocaleString()}</div>
-                        <div className="text-sm text-muted-foreground">Average Views</div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-sm font-medium">Motivation</Label>
-                      <p className="text-sm text-muted-foreground mt-1 p-3 bg-muted rounded-lg">
-                        {selectedApplication.motivation}
-                      </p>
-                    </div>
-
-                    {selectedApplication.rejectionReason && (
-                      <div>
-                        <Label className="text-sm font-medium text-red-600">Rejection Reason</Label>
-                        <p className="text-sm text-muted-foreground mt-1 p-3 bg-red-50 rounded-lg border border-red-200">
-                          {selectedApplication.rejectionReason}
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No portfolio links provided</p>
+                  )}
+                </div>
               </div>
 
-              {/* Review Actions */}
-              {reviewAction && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className={`text-lg ${reviewAction === 'reject' ? 'text-red-600' : 'text-green-600'}`}>
-                      {reviewAction === 'reject' ? 'Rejection Review' : 'Approval Review'}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="review-notes" className="text-sm font-medium">
-                          Review Notes <span className="text-red-500">*</span>
-                        </Label>
-                        <Textarea
-                          id="review-notes"
-                          placeholder={`Please provide detailed ${reviewAction === 'reject' ? 'rejection' : 'approval'} notes (required)...`}
-                          value={rejectionReason}
-                          onChange={(e) => setRejectionReason(e.target.value)}
-                          className="min-h-[100px] mt-1"
-                        />
-                        <p className="text-sm text-muted-foreground mt-1">
-                          These notes will be included in the email notification to the applicant.
-                        </p>
+              {/* Writing Samples */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Writing Samples
+                </h4>
+                <div className="grid gap-3">
+                  {getPortfolioLinks(selectedApplication.portfolio_links).length > 0 ? (
+                    getPortfolioLinks(selectedApplication.portfolio_links).map((link, index) => (
+                      <div key={index} className="p-3 border rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">Sample {index + 1}</p>
+                            <a
+                              href={link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline"
+                            >
+                              {link}
+                            </a>
+                          </div>
+                          <ExternalLink className="w-4 h-4 text-muted-foreground ml-2" />
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No writing samples provided</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Application Statistics */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Writing Samples</span>
+                  </div>
+                  <p className="text-2xl font-bold">{getSampleCount(selectedApplication.portfolio_links)}</p>
+                </div>
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Eye className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Average Views</span>
+                  </div>
+                  <p className="text-2xl font-bold">N/A</p>
+                </div>
+              </div>
+
+              {/* Motivation */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Motivation
+                </h4>
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <p className="text-sm">{selectedApplication.motivation}</p>
+                </div>
+              </div>
+
+              {/* Rejection Reason (if rejected) */}
+              {selectedApplication.status === 'rejected' && selectedApplication.rejection_reason && (
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold flex items-center gap-2 text-red-600">
+                    <XCircle className="w-5 h-5" />
+                    Rejection Reason
+                  </h4>
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800">{selectedApplication.rejection_reason}</p>
+                  </div>
+                </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-2 pt-4 border-t">
-                {(selectedApplication.status === 'pending' || selectedApplication.status === 'under_review') && !reviewAction && (
-                  <>
-                    <Button 
-                      onClick={() => setReviewAction('approve')}
-                      className="bg-green-600 hover:bg-green-700"
-                      disabled={isLoading}
-                    >
-                      <ThumbsUp className="mr-2 h-4 w-4" />
-                      Approve Application
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      onClick={() => setReviewAction('reject')}
-                      className="text-red-600 hover:text-red-700"
-                      disabled={isLoading}
-                    >
-                      <ThumbsDown className="mr-2 h-4 w-4" />
-                      Reject Application
-                    </Button>
-                  </>
-                )}
-                
-                {reviewAction && (
-                  <>
-                    <Button 
-                      onClick={() => handleReviewAction(reviewAction, selectedApplication.id)}
-                      className={reviewAction === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
-                      variant={reviewAction === 'reject' ? 'destructive' : 'default'}
-                      disabled={!rejectionReason.trim() || isLoading}
-                    >
-                      {isLoading ? (
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      ) : reviewAction === 'approve' ? (
-                        <ThumbsUp className="mr-2 h-4 w-4" />
-                      ) : (
-                        <ThumbsDown className="mr-2 h-4 w-4" />
-                      )}
-                      {reviewAction === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      onClick={() => {
-                        setReviewAction(null);
-                        setRejectionReason('');
-                      }}
-                      disabled={isLoading}
-                    >
-                      Cancel
-                    </Button>
-                  </>
-                )}
+              {/* Review Actions */}
+              {selectedApplication.status === 'pending' && (
+                <div className="space-y-4 pt-6 border-t">
+                  <h4 className="text-lg font-semibold">Review Application</h4>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="reviewNotes">Review Notes (Optional)</Label>
+                      <Textarea
+                        id="reviewNotes"
+                        value={reviewNotes}
+                        onChange={(e) => setReviewNotes(e.target.value)}
+                        placeholder="Add any notes about this application..."
+                        className="mt-1"
+                      />
+                    </div>
 
-                <Button 
-                  variant="outline"
-                  onClick={() => window.open(selectedApplication.portfolioUrl, '_blank')}
-                >
-                  <Globe className="mr-2 h-4 w-4" />
-                  View Portfolio
-                </Button>
-                
-                <Button 
-                  variant="outline"
-                  onClick={() => window.open(`mailto:${selectedApplication.email}`, '_blank')}
-                >
-                  <Mail className="mr-2 h-4 w-4" />
-                  Send Email
-                </Button>
-              </div>
+                    {reviewAction === 'reject' && (
+                      <div>
+                        <Label htmlFor="rejectionReason">Rejection Reason *</Label>
+                        <Textarea
+                          id="rejectionReason"
+                          value={rejectionReason}
+                          onChange={(e) => setRejectionReason(e.target.value)}
+                          placeholder="Explain why this application is being rejected..."
+                          className="mt-1"
+                          required
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => handleReviewAction('approve')}
+                        disabled={isReviewing}
+                        className="flex-1"
+                      >
+                        {isReviewing ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <ThumbsUp className="w-4 h-4 mr-2" />
+                        )}
+                        Approve Application
+                      </Button>
+                      
+                      <Button
+                        variant="destructive"
+                        onClick={() => setReviewAction('reject')}
+                        disabled={isReviewing}
+                        className="flex-1"
+                      >
+                        <ThumbsDown className="w-4 h-4 mr-2" />
+                        Reject Application
+                      </Button>
+                    </div>
+
+                    {reviewAction === 'reject' && (
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleReviewAction('reject')}
+                        disabled={isReviewing || !rejectionReason.trim()}
+                        className="w-full"
+                      >
+                        {isReviewing ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <XCircle className="w-4 h-4 mr-2" />
+                        )}
+                        Confirm Rejection
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

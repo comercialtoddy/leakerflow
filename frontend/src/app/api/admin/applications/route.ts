@@ -31,53 +31,38 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const status = searchParams.get('status');
 
-    // Return mock data for now since author_applications table doesn't exist yet
-    const mockApplications = [
-      {
-        id: 'app_1',
-        status: 'pending',
-        created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-        full_name: 'John Doe',
-        email: 'john.doe@example.com',
-        bio: 'Experienced tech writer with 5 years in the industry',
-        submitted_at: new Date(Date.now() - 86400000).toISOString()
-      },
-      {
-        id: 'app_2',
-        status: 'approved',
-        created_at: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-        full_name: 'Jane Smith',
-        email: 'jane.smith@example.com',
-        bio: 'Technology journalist and content creator',
-        submitted_at: new Date(Date.now() - 172800000).toISOString(),
-        reviewed_at: new Date(Date.now() - 86400000).toISOString(),
-        reviewed_by: user.id
-      },
-      {
-        id: 'app_3',
-        status: 'rejected',
-        created_at: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
-        full_name: 'Bob Johnson',
-        email: 'bob.johnson@example.com',
-        bio: 'New to writing but eager to learn',
-        submitted_at: new Date(Date.now() - 259200000).toISOString(),
-        reviewed_at: new Date(Date.now() - 172800000).toISOString(),
-        reviewed_by: user.id,
-        rejection_reason: 'Insufficient writing experience'
-      }
-    ];
+    // Use the database function to get real applications
+    const { data: applications, error } = await supabase.rpc('list_author_applications', {
+      p_status: status || null,
+      p_limit: limit,
+      p_offset: (page - 1) * limit
+    });
 
-    // Filter by status if provided
-    let filteredApplications = mockApplications;
-    if (status) {
-      filteredApplications = mockApplications.filter(app => app.status === status);
+    if (error) {
+      console.error('Error fetching applications:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch applications' },
+        { status: 500 }
+      );
     }
 
     // Count totals by status for dashboard stats
-    const totalCount = mockApplications.length;
-    const pendingCount = mockApplications.filter(app => app.status === 'pending').length;
-    const approvedCount = mockApplications.filter(app => app.status === 'approved').length;
-    const rejectedCount = mockApplications.filter(app => app.status === 'rejected').length;
+    const { data: allApplications, error: countError } = await supabase
+      .from('author_applications')
+      .select('status');
+
+    if (countError) {
+      console.error('Error counting applications:', countError);
+      return NextResponse.json(
+        { error: 'Failed to fetch application counts' },
+        { status: 500 }
+      );
+    }
+
+    const totalCount = allApplications?.length || 0;
+    const pendingCount = allApplications?.filter(app => app.status === 'pending').length || 0;
+    const approvedCount = allApplications?.filter(app => app.status === 'approved').length || 0;
+    const rejectedCount = allApplications?.filter(app => app.status === 'rejected').length || 0;
 
     // If limit is 1, return dashboard summary data
     if (limit === 1) {
@@ -97,16 +82,18 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Calculate pagination
-    const offset = (page - 1) * limit;
-    const paginatedApplications = filteredApplications.slice(offset, offset + limit);
-
     const response = {
-      data: paginatedApplications,
-      total: filteredApplications.length,
+      data: applications || [],
+      total: totalCount,
       page,
       limit,
-      hasMore: filteredApplications.length > offset + limit
+      hasMore: totalCount > (page * limit),
+      stats: {
+        total: totalCount,
+        pending: pendingCount,
+        approved: approvedCount,
+        rejected: rejectedCount
+      }
     };
 
     return NextResponse.json(response);

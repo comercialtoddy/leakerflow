@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, memo, Suspense } from 'react';
+import { useState, useMemo, useCallback, memo, Suspense, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   Plus, 
@@ -15,7 +15,9 @@ import {
   FileText,
   Users,
   BarChart3,
-  Loader2
+  Loader2,
+  User,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +46,10 @@ import { useRouter } from 'next/navigation';
 import type { Article } from '@/lib/supabase/articles';
 import { useDebounce } from '@/hooks/use-debounce';
 import { cn } from '@/lib/utils';
+import { AuthorApplicationForm } from '@/components/application/AuthorApplicationForm';
+import { useAuth } from '@/components/AuthProvider';
+import { useAdminUI } from '@/contexts/AdminContext';
+import { useAuthorStatus } from '@/hooks/use-author-status';
 
 
 
@@ -189,6 +195,9 @@ const LoadingSkeleton = memo(() => (
 
 export default function ArticlesDashboard() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { showAdminUI, isLoadingAdminStatus } = useAdminUI();
+  const { authorStatus, isLoading: authorStatusLoading, hasAccess, needsApplication, isPending } = useAuthorStatus();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -267,7 +276,8 @@ export default function ArticlesDashboard() {
 
 
 
-  if (statsLoading || articlesLoading) {
+  // Show loading state while checking author status
+  if (authorStatusLoading || isLoadingAdminStatus || statsLoading || articlesLoading) {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-8">
@@ -304,6 +314,44 @@ export default function ArticlesDashboard() {
     );
   }
 
+  // Show application form if user needs to apply
+  if (needsApplication) {
+    return <AuthorApplicationForm />;
+  }
+
+  // Show pending status page
+  if (isPending) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-2xl w-full"
+        >
+          <Card>
+            <CardContent className="p-8 text-center space-y-6">
+              <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto">
+                <Clock className="w-8 h-8 text-amber-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold mb-2">Application Under Review</h1>
+                <p className="text-muted-foreground">
+                  Your author application is currently being reviewed by our editorial team. 
+                  We'll notify you via email once a decision has been made.
+                </p>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <p>Expected review time: 5-7 business days</p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Show full dashboard for approved authors
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-8">

@@ -57,6 +57,8 @@ import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAuth } from '@/components/AuthProvider';
+import { useAdminUI } from '@/contexts/AdminContext';
+import { useAuthorStatus } from '@/hooks/use-author-status';
 
 interface MediaItem {
   id: string;
@@ -96,6 +98,8 @@ export default function ArticleEditor() {
   const searchParams = useSearchParams();
   const articleId = searchParams.get('id');
   const { user } = useAuth();
+  const { showAdminUI, isLoadingAdminStatus } = useAdminUI();
+  const { hasAccess, isLoading: authorStatusLoading } = useAuthorStatus();
   
   // State
   const [title, setTitle] = useState('');
@@ -132,6 +136,29 @@ export default function ArticleEditor() {
   const updateArticleMutation = useUpdateArticle();
 
   const isEditing = !!articleId;
+
+  // Check if user has author access - redirect if not
+  useEffect(() => {
+    const checkAuthorAccess = async () => {
+      if (!user) {
+        router.push('/articles');
+        return;
+      }
+
+      // Wait for admin status and author status to load
+      if (isLoadingAdminStatus || authorStatusLoading) {
+        return;
+      }
+
+      // Check if user has access (either admin or approved author)
+      if (!hasAccess) {
+        router.push('/articles');
+        return;
+      }
+    };
+
+    checkAuthorAccess();
+  }, [user, router, showAdminUI, isLoadingAdminStatus, hasAccess, authorStatusLoading]);
 
   // Auto-populate author name when user is available
   useEffect(() => {
@@ -495,8 +522,25 @@ export default function ArticleEditor() {
     );
   }
 
+  // Show loading while checking authorization
+  if (authorStatusLoading || isLoadingAdminStatus) {
   return (
-    <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="text-muted-foreground">Loading editor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render editor if user doesn't have access
+  if (!hasAccess) {
+    return null; // Will redirect via useEffect
+  }
+
+  return (
+    <div className="min-h-screen bg-background" data-user-id={user?.id}>
       <div className="max-w-7xl mx-auto p-6">
         
         {/* Header */}

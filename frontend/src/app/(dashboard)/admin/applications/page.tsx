@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useAdminUI } from '@/contexts/AdminContext';
 import { AuthorApplicationsPanel } from '@/components/admin/AuthorApplicationsPanel';
+import { ApplicationStatsCards } from '@/components/admin/ApplicationStatsCards';
 
 export default function AuthorApplicationsPage() {
   const { showAdminUI, isLoadingAdminStatus } = useAdminUI();
@@ -46,6 +47,9 @@ export default function AuthorApplicationsPage() {
             </Link>
           </div>
         </motion.div>
+
+        {/* Real Application Statistics */}
+        <ApplicationStatsCards />
 
         <AuthorApplicationsPanel />
       </div>

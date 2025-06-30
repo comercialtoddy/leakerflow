@@ -306,7 +306,7 @@ BEGIN
     SELECT 
         aa.id,
         aa.user_id,
-        u.email as user_email,
+        u.email::text as user_email,
         aa.full_name,
         aa.email,
         aa.bio,
@@ -319,7 +319,7 @@ BEGIN
         aa.reviewed_at,
         aa.review_notes,
         aa.rejection_reason,
-        r.email as reviewer_email
+        r.email::text as reviewer_email
     FROM author_applications aa
     JOIN auth.users u ON u.id = aa.user_id
     LEFT JOIN auth.users r ON r.id = aa.reviewed_by
