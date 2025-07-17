@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { usePipedreamProfiles, useCreatePipedreamProfile, useUpdatePipedreamProfile, useDeletePipedreamProfile, useConnectPipedreamProfile } from '@/hooks/react-query/pipedream/use-pipedream-profiles';
-import { usePipedreamApps } from '@/hooks/react-query/pipedream/use-pipedream';
+import { usePipedreamApps, usePipedreamAppIcon } from '@/hooks/react-query/pipedream/use-pipedream';
 import { PipedreamRegistry } from '@/components/agents/pipedream/pipedream-registry';
 import { PipedreamConnector } from '@/components/agents/pipedream/pipedream-connector';
 import { useQueryClient } from '@tanstack/react-query';
@@ -100,6 +100,10 @@ const AppTable: React.FC<AppTableProps> = ({
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+
+  const { data: iconData } = usePipedreamAppIcon(appSlug, {
+    enabled: !appImage
+  });
 
   const createProfile = useCreatePipedreamProfile();
   const connectProfile = useConnectPipedreamProfile();
@@ -325,9 +329,9 @@ const AppTable: React.FC<AppTableProps> = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={() => setShowDeleteDialog(profile)}
-                className="text-destructive"
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4 text-destructive" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -341,12 +345,12 @@ const AppTable: React.FC<AppTableProps> = ({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center overflow-hidden border">
-            {appImage ? (
+          <div className="h-7 w-7 rounded-lg flex items-center justify-center overflow-hidden">
+            {(appImage || iconData?.icon_url) ? (
               <img
-                src={appImage}
+                src={appImage || iconData?.icon_url || ''}
                 alt={appName}
-                className="h-5 w-5 object-cover"
+                className="h-full w-full object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
@@ -356,7 +360,7 @@ const AppTable: React.FC<AppTableProps> = ({
             ) : null}
             <span className={cn(
               "text-sm font-semibold text-muted-foreground",
-              appImage ? "hidden" : "block"
+              (appImage || iconData?.icon_url) ? "hidden" : "block"
             )}>
               {appName.charAt(0).toUpperCase()}
             </span>
@@ -449,7 +453,7 @@ const AppTable: React.FC<AppTableProps> = ({
                   setShowDeleteDialog(null);
                 }
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-white hover:bg-destructive/90"
             >
               Delete
             </AlertDialogAction>
@@ -466,6 +470,11 @@ export const PipedreamConnectionsSection: React.FC<PipedreamConnectionsSectionPr
   const [showAppBrowser, setShowAppBrowser] = useState(false);
   const [showConnector, setShowConnector] = useState(false);
   const [selectedApp, setSelectedApp] = useState<PipedreamApp | null>(null);
+  
+  // Debug logging
+  React.useEffect(() => {
+    console.log('State changed: selectedApp:', selectedApp, 'showConnector:', showConnector);
+  }, [selectedApp, showConnector]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -486,8 +495,10 @@ export const PipedreamConnectionsSection: React.FC<PipedreamConnectionsSectionPr
   };
 
   const handleConnect = (app: PipedreamApp) => {
+    console.log('handleConnect called with app:', app);
     setSelectedApp(app);
     setShowConnector(true);
+    console.log('Set showConnector to true');
   };
 
   const handleConnectionComplete = (profileId: string, selectedTools: string[], appName: string, appSlug: string) => {
@@ -548,7 +559,6 @@ export const PipedreamConnectionsSection: React.FC<PipedreamConnectionsSectionPr
     return acc;
   }, {} as Record<string, PipedreamProfile[]>) || {};
 
-  // Filter profiles based on search query
   const filteredProfilesByApp = useMemo(() => {
     if (!searchQuery.trim()) {
       return profilesByApp;
@@ -564,7 +574,6 @@ export const PipedreamConnectionsSection: React.FC<PipedreamConnectionsSectionPr
         profile.app_name.toLowerCase().includes(query)
       );
 
-      // Include the app if the app name matches or if any profiles match
       if (appName.includes(query) || matchingProfiles.length > 0) {
         filtered[appSlug] = appName.includes(query) ? appProfiles : matchingProfiles;
       }
@@ -617,28 +626,44 @@ export const PipedreamConnectionsSection: React.FC<PipedreamConnectionsSectionPr
 
   if (totalProfiles === 0) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="p-8 text-center">
-          <div className="space-y-4">
-            <div className="p-3 rounded-full bg-primary/10 w-fit mx-auto">
-              <User className="h-6 w-6 text-primary" />
+      <>
+        <Card className="border-dashed">
+          <CardContent className="p-8 text-center">
+            <div className="space-y-4">
+              <div className="p-3 rounded-full bg-primary/10 w-fit mx-auto">
+                <User className="h-6 w-6 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-semibold text-foreground">No credential profiles yet</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Connect your favorite apps to create credential profiles for your agents
+                </p>
+              </div>
+              <Button 
+                onClick={() => setShowAppBrowser(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Connect App
+              </Button>
             </div>
-            <div className="space-y-1">
-              <h3 className="font-semibold text-foreground">No credential profiles yet</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Connect your favorite apps to create credential profiles for your agents
-              </p>
-            </div>
-            <Button 
-              onClick={() => setShowAppBrowser(true)}
-              className="h-9"
-            >
-              <Plus className="h-4 w-4" />
-              Connect New App
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+        <Dialog open={showAppBrowser} onOpenChange={setShowAppBrowser}>
+          <DialogContent className="p-0 max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Browse Apps</DialogTitle>
+              <DialogDescription>
+                Select an app to create a credential profile
+              </DialogDescription>
+            </DialogHeader>
+            <PipedreamRegistry
+              mode='profile-only'
+              showAgentSelector={false}
+              onAppSelected={handleAppSelect}
+            />
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
@@ -662,7 +687,6 @@ export const PipedreamConnectionsSection: React.FC<PipedreamConnectionsSectionPr
         </Button>
       </div>
 
-      {/* Search Bar */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -751,6 +775,7 @@ export const PipedreamConnectionsSection: React.FC<PipedreamConnectionsSectionPr
           </DialogHeader>
           <PipedreamRegistry
             mode='profile-only'
+            showAgentSelector={false}
             onAppSelected={handleAppSelect}
           />
         </DialogContent>

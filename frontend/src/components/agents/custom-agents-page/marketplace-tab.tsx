@@ -36,7 +36,7 @@ export const MarketplaceTab = ({
   getItemStyling
 }: MarketplaceTabProps) => {
   return (
-    <div className="space-y-6 mt-8">
+    <div className="space-y-6 mt-8 flex flex-col min-h-full">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <SearchBar
           placeholder="Search agents..."
@@ -55,18 +55,20 @@ export const MarketplaceTab = ({
         </Select>
       </div>
 
-      {marketplaceLoading ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-card rounded-2xl overflow-hidden shadow-sm">
-              <Skeleton className="h-48" />
-              <div className="p-6 space-y-3">
-                <Skeleton className="h-5 rounded" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 rounded" />
-                  <Skeleton className="h-4 rounded w-3/4" />
+      <div className="flex-1">
+        {marketplaceLoading ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="bg-card rounded-2xl overflow-hidden shadow-sm">
+                <Skeleton className="h-48" />
+                <div className="p-6 space-y-3">
+                  <Skeleton className="h-5 rounded" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 rounded" />
+                    <Skeleton className="h-4 rounded w-3/4" />
+                  </div>
+                  <Skeleton className="h-10 rounded-full" />
                 </div>
-                <Skeleton className="h-10 rounded-full" />
               </div>
             </div>
           ))}
@@ -102,43 +104,43 @@ export const MarketplaceTab = ({
                       />
                     ))}
                   </div>
-                </div>
-              )}
-              {communityItems.length > 0 && (
-                <div className="space-y-6">
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {communityItems.map((item) => (
-                      <AgentCard
-                        key={item.id}
-                        mode="marketplace"
-                        data={item}
-                        styling={getItemStyling(item)}
-                        isActioning={installingItemId === item.id}
-                        onPrimaryAction={onInstallClick}
-                        onClick={() => onInstallClick(item)}
-                      />
-                    ))}
+                )}
+                {communityItems.length > 0 && (
+                  <div className="space-y-6">
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {communityItems.map((item) => (
+                        <AgentCard
+                          key={item.id}
+                          mode="marketplace"
+                          data={item}
+                          styling={getItemStyling(item)}
+                          isActioning={installingItemId === item.id}
+                          onPrimaryAction={onInstallClick}
+                          onClick={() => onInstallClick(item)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {allMarketplaceItems.map((item) => (
-                <AgentCard
-                  key={item.id}
-                  mode="marketplace"
-                  data={item}
-                  styling={getItemStyling(item)}
-                  isActioning={installingItemId === item.id}
-                  onPrimaryAction={onInstallClick}
-                  onClick={() => onInstallClick(item)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                )}
+              </>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {allMarketplaceItems.map((item) => (
+                  <AgentCard
+                    key={item.id}
+                    mode="marketplace"
+                    data={item}
+                    styling={getItemStyling(item)}
+                    isActioning={installingItemId === item.id}
+                    onPrimaryAction={onInstallClick}
+                    onClick={() => onInstallClick(item)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
