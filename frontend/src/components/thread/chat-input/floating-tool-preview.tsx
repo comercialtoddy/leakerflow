@@ -159,7 +159,7 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
                   )} />
                   <span className="text-xs text-muted-foreground truncate">
                     {isStreaming
-                      ? `${agentName || 'Suna'} is working...`
+                      ? `${agentName || 'Leaker-Flow'} is working...`
                       : isSuccess
                         ? "Success"
                         : "Failed"
@@ -203,4 +203,4 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
       )}
     </AnimatePresence>
   );
-}; 
+};
