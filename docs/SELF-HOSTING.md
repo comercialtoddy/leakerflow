@@ -124,8 +124,8 @@ As part of the setup, you'll need to:
 1. Create a Daytona account
 2. Generate an API key
 3. Create a Snapshot:
-   - Name: `leaker-flow/leaker-flow:0.1.3`
-- Image name: `leaker-flow/leaker-flow:0.1.3`
+   - Name: `kortix/suna:0.1.3`
+   - Image name: `kortix/suna:0.1.3`
    - Entrypoint: `/usr/bin/supervisord -n -c /etc/supervisor/conf.d/supervisord.conf`
 
 ### 5. QStash Configuration
