@@ -1,4 +1,4 @@
-# Leaker-Flow Backend
+# Suna Backend
 
 ## Quick Setup
 

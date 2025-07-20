@@ -11,7 +11,7 @@ import Image from 'next/image';
 import Cal, { getCalApi } from '@calcom/embed-react';
 import { useTheme } from 'next-themes';
 
-export function LeakerFlowProcessModal() {
+export function KortixProcessModal() {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const { resolvedTheme } = useTheme();
@@ -42,9 +42,9 @@ export function LeakerFlowProcessModal() {
               <div className="mb-8 mt-0 flex-shrink-0">
                 <Image
                   src={
-                    isDarkMode ? '/leaker-flow-logo-white.svg' : '/leaker-flow-logo.svg'
+                    isDarkMode ? '/kortix-logo-white.svg' : '/kortix-logo.svg'
                   }
-                  alt="Leaker-Flow Logo"
+                  alt="Kortix Logo"
                   width={60}
                   height={21}
                   className="h-6 w-auto"
@@ -141,7 +141,7 @@ export function LeakerFlowProcessModal() {
             <div className="h-full overflow-auto">
               <Cal
                 namespace="enterprise-demo"
-                calLink="team/leaker-flow/enterprise-demo"
+                calLink="team/kortix/enterprise-demo"
                 style={{ width: '100%', height: '100%' }}
                 config={{
                   layout: 'month_view',

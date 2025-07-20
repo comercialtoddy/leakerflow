@@ -20,10 +20,10 @@ export function FooterSection() {
   }, []);
 
   const logoSrc = !mounted
-    ? '/leaker-flow-logo.svg'
+    ? '/kortix-logo.svg'
     : resolvedTheme === 'dark'
-      ? '/leaker-flow-logo-white.svg'
-      : '/leaker-flow-logo.svg';
+      ? '/kortix-logo-white.svg'
+      : '/kortix-logo.svg';
 
   return (
     <footer id="footer" className="w-full pb-0">
@@ -32,7 +32,7 @@ export function FooterSection() {
           <Link href="/" className="flex items-center gap-2">
             <Image
               src={logoSrc}
-              alt="Leaker-Flow Logo"
+              alt="Kortix Logo"
               width={122}
               height={22}
               priority
@@ -44,7 +44,7 @@ export function FooterSection() {
 
           <div className="flex items-center gap-4">
             <a
-              href="https://github.com/leaker-flow/leaker-flow"
+              href="https://github.com/kortix-ai/suna"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub"
@@ -61,7 +61,7 @@ export function FooterSection() {
               </svg>
             </a>
             <a
-              href="https://x.com/leakerflow"
+              href="https://x.com/kortixai"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="X (Twitter)"
@@ -78,7 +78,7 @@ export function FooterSection() {
               </svg>
             </a>
             <a
-              href="https://www.linkedin.com/company/leaker-flow/"
+              href="https://www.linkedin.com/company/kortix/"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="LinkedIn"

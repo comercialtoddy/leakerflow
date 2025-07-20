@@ -100,10 +100,10 @@ export function Navbar() {
   const handleOverlayClick = () => setIsDrawerOpen(false);
 
   const logoSrc = !mounted
-    ? '/leaker-flow-logo.svg'
+    ? '/kortix-logo.svg'
     : resolvedTheme === 'dark'
-      ? '/leaker-flow-logo-white.svg'
-      : '/leaker-flow-logo.svg';
+      ? '/kortix-logo-white.svg'
+      : '/kortix-logo.svg';
 
   return (
     <header
@@ -129,7 +129,7 @@ export function Navbar() {
             <Link href="/" className="flex items-center gap-3">
               <Image
                 src={logoSrc}
-                alt="Leaker-Flow Logo"
+                alt="Kortix Logo"
                 width={140}
                 height={22}
                 priority
@@ -141,7 +141,7 @@ export function Navbar() {
             <div className="flex flex-row items-center gap-1 md:gap-3 shrink-0">
               <div className="flex items-center space-x-3">
                 {/* <Link
-                  href="https://github.com/leaker-flow/leaker-flow"
+                  href="https://github.com/kortix-ai/suna"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hidden md:flex items-center justify-center h-8 px-3 text-sm font-normal tracking-wide rounded-full text-primary hover:text-primary/80 transition-colors"
@@ -208,13 +208,13 @@ export function Navbar() {
                   <Link href="/" className="flex items-center gap-3">
                     <Image
                       src={logoSrc}
-                      alt="Leaker-Flow Logo"
+                      alt="Kortix Logo"
                       width={120}
                       height={22}
                       priority
                     />
                     <span className="font-medium text-primary text-sm">
-                      / Leaker-Flow
+                      / Suna
                     </span>
                   </Link>
                   <button

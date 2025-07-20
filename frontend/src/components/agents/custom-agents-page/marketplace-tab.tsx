@@ -11,11 +11,11 @@ import type { MarketplaceTemplate } from '@/components/agents/installation/types
 interface MarketplaceTabProps {
   marketplaceSearchQuery: string;
   setMarketplaceSearchQuery: (value: string) => void;
-  marketplaceFilter: 'all' | 'leaker-flow' | 'community';
-  setMarketplaceFilter: (value: 'all' | 'leaker-flow' | 'community') => void;
+  marketplaceFilter: 'all' | 'kortix' | 'community';
+  setMarketplaceFilter: (value: 'all' | 'kortix' | 'community') => void;
   marketplaceLoading: boolean;
   allMarketplaceItems: MarketplaceTemplate[];
-  leakerFlowTeamItems: MarketplaceTemplate[];
+  kortixTeamItems: MarketplaceTemplate[];
   communityItems: MarketplaceTemplate[];
   installingItemId: string | null;
   onInstallClick: (item: MarketplaceTemplate, e?: React.MouseEvent) => void;
@@ -29,7 +29,7 @@ export const MarketplaceTab = ({
   setMarketplaceFilter,
   marketplaceLoading,
   allMarketplaceItems,
-  leakerFlowTeamItems,
+  kortixTeamItems,
   communityItems,
   installingItemId,
   onInstallClick,
@@ -43,13 +43,13 @@ export const MarketplaceTab = ({
           value={marketplaceSearchQuery}
           onChange={setMarketplaceSearchQuery}
         />
-        <Select value={marketplaceFilter} onValueChange={(value: 'all' | 'leaker-flow' | 'community') => setMarketplaceFilter(value)}>
+        <Select value={marketplaceFilter} onValueChange={(value: 'all' | 'kortix' | 'community') => setMarketplaceFilter(value)}>
           <SelectTrigger className="w-[180px] h-12 rounded-xl">
             <SelectValue placeholder="Filter agents" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Agents</SelectItem>
-            <SelectItem value="leaker-flow">Leaker-Flow Verified</SelectItem>
+            <SelectItem value="kortix">Kortix Verified</SelectItem>
             <SelectItem value="community">Community</SelectItem>
           </SelectContent>
         </Select>
@@ -143,4 +143,4 @@ export const MarketplaceTab = ({
       </div>
     </div>
   );
-};
+}; 

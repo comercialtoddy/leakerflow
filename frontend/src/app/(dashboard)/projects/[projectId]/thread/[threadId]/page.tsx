@@ -475,7 +475,7 @@ export default function ThreadPage({
   // SEO title update
   useEffect(() => {
     if (projectName) {
-      document.title = `${projectName} | Leaker-Flow`;
+      document.title = `${projectName} | Kortix Suna`;
 
       const metaDescription = document.querySelector(
         'meta[name="description"]',
@@ -483,13 +483,13 @@ export default function ThreadPage({
       if (metaDescription) {
         metaDescription.setAttribute(
           'content',
-          `${projectName} - Interactive agent conversation powered by Leaker-Flow`,
+          `${projectName} - Interactive agent conversation powered by Kortix Suna`,
         );
       }
 
       const ogTitle = document.querySelector('meta[property="og:title"]');
       if (ogTitle) {
-        ogTitle.setAttribute('content', `${projectName} | Leaker-Flow`);
+        ogTitle.setAttribute('content', `${projectName} | Kortix Suna`);
       }
 
       const ogDescription = document.querySelector(
@@ -514,7 +514,7 @@ export default function ThreadPage({
   useEffect(() => {
     if (initialLoadCompleted && subscriptionData && !hasCheckedUpgradeDialog.current) {
       hasCheckedUpgradeDialog.current = true;
-      const hasSeenUpgradeDialog = localStorage.getItem('leaker_flow_upgrade_dialog_displayed');
+      const hasSeenUpgradeDialog = localStorage.getItem('suna_upgrade_dialog_displayed');
       const isFreeTier = subscriptionStatus === 'no_subscription';
       if (!hasSeenUpgradeDialog && isFreeTier && !isLocalMode()) {
         setShowUpgradeDialog(true);
@@ -524,7 +524,7 @@ export default function ThreadPage({
 
   const handleDismissUpgradeDialog = () => {
     setShowUpgradeDialog(false);
-    localStorage.setItem('leaker_flow_upgrade_dialog_displayed', 'true');
+    localStorage.setItem('suna_upgrade_dialog_displayed', 'true');
   };
 
   useEffect(() => {
@@ -686,4 +686,4 @@ export default function ThreadPage({
       />
     </>
   );
-}
+} 

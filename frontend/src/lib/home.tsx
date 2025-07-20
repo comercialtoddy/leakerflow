@@ -57,17 +57,17 @@ export interface PricingTier {
 }
 
 export const siteConfig = {
-  name: 'Leaker-Flow',
-  description: 'Your trusted source for verified GTA 6 information and leaks.',
-  cta: 'Get Latest Updates',
+  name: 'Kortix Suna',
+  description: 'The Generalist AI Agent that can act on your behalf.',
+  cta: 'Start Free',
   url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-  keywords: ['GTA 6', 'Grand Theft Auto 6', 'GTA 6 Leaks', 'GTA 6 News', 'Rockstar Games'],
+  keywords: ['AI Agent', 'Generalist AI', 'Open Source AI', 'Autonomous Agent'],
   links: {
-    email: 'support@gta6hub.com',
-    twitter: 'https://x.com/leakerflow',
-    discord: 'https://discord.gg/leakerflow',
-    github: 'https://github.com/leaker-flow/leaker-flow',
-    instagram: 'https://instagram.com/leakerflow',
+    email: 'support@kortix.ai',
+    twitter: 'https://x.com/kortixai',
+    discord: 'https://discord.gg/kortixai',
+    github: 'https://github.com/Kortix-ai/Suna',
+    instagram: 'https://instagram.com/kortixai',
   },
   nav: {
     links: [
@@ -104,75 +104,71 @@ export const siteConfig = {
         />
       </svg>
     ),
-    badge: 'VERIFIED INFORMATION',
-    githubUrl: 'https://github.com/leaker-flow/leaker-flow',
-    title: 'From Chaos to Clarity: Your GTA 6 Information Hub',
+    badge: '100% OPEN SOURCE',
+    githubUrl: 'https://github.com/kortix-ai/suna',
+    title: 'Suna, the AI Employee.',
     description:
-      'End the information drought. Get verified, curated GTA 6 updates from all sources in one place.',
-    inputPlaceholder: 'Search GTA 6 information...',
+      'Suna by Kortix – is a generalist AI Agent that acts on your behalf.',
+    inputPlaceholder: 'Ask Suna to...',
   },
   cloudPricingItems: [
     {
-      name: 'Community',
+      name: 'Free',
       price: '$0',
-      description: 'Perfect for casual GTA 6 fans',
-      buttonText: 'Join Free',
+      description: 'Perfect for getting started',
+      buttonText: 'Start Free',
       buttonColor: 'bg-secondary text-white',
       isPopular: false,
       /** @deprecated */
       hours: '60 min',
       features: [
-        'Verified GTA 6 updates',
-        'Community discussions',
-        'Basic leak verification',
-        'Mobile notifications',
+        '$5 free AI tokens included',
+        'Public projects',
+        'Basic Models',
+        'Community support',
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.FREE.priceId,
       upgradePlans: [],
     },
     {
-      name: 'Premium',
-      price: '$4.99',
-      yearlyPrice: '$49.99',
-      originalYearlyPrice: '$59.88',
-      discountPercentage: 17,
-      description: 'For dedicated GTA 6 enthusiasts',
-      buttonText: 'Go Premium',
+      name: 'Plus',
+      price: '$20',
+      yearlyPrice: '$204',
+      originalYearlyPrice: '$240',
+      discountPercentage: 15,
+      description: 'Best for individuals and small teams',
+      buttonText: 'Start Free',
       buttonColor: 'bg-primary text-white dark:text-black',
       isPopular: true,
       /** @deprecated */
       hours: '2 hours',
       features: [
-        'Everything in Community',
-        'Instant leak alerts',
-        'Advanced filtering',
-        'Historical leak database',
-        'Priority support',
-        'Ad-free experience',
+        '$20 AI token credits/month',
+        'Private projects',
+        'Premium AI Models',
+        'Community support',
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_2_20.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_2_20_YEARLY.priceId,
       upgradePlans: [],
     },
     {
-      name: 'Creator',
-      price: '$19.99',
-      yearlyPrice: '$199.99',
-      originalYearlyPrice: '$239.88',
-      discountPercentage: 17,
-      description: 'For content creators and GTA 6 news sites',
-      buttonText: 'Start Creating',
+      name: 'Pro',
+      price: '$50',
+      yearlyPrice: '$510',
+      originalYearlyPrice: '$600',
+      discountPercentage: 15,
+      description: 'Ideal for growing businesses',
+      buttonText: 'Start Free',
       buttonColor: 'bg-secondary text-white',
       isPopular: false,
       /** @deprecated */
       hours: '6 hours',
       features: [
-        'Everything in Premium',
-        'API access',
-        'Content creator tools',
-        'Analytics dashboard',
-        'White-label options',
-        'Custom integrations',
+        '$50 AI token credits/month',
+        'Private projects',
+        'Premium AI Models',
+        'Community support',
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_6_50.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_6_50_YEARLY.priceId,
@@ -202,21 +198,20 @@ export const siteConfig = {
     },
     {
       name: 'Ultra',
-      price: '$99.99',
-      yearlyPrice: '$999.99',
-      originalYearlyPrice: '$1199.88',
-      discountPercentage: 17,
-      description: 'For ultimate GTA 6 enthusiasts',
-      buttonText: 'Go Ultra',
+      price: '$200',
+      yearlyPrice: '$2040',
+      originalYearlyPrice: '$2400',
+      discountPercentage: 15,
+      description: 'For power users and teams',
+      buttonText: 'Start Free',
       buttonColor: 'bg-primary text-white dark:text-black',
       isPopular: false,
       hours: '25 hours',
       features: [
-        'Everything in Creator',
-        'Exclusive leak previews',
-        'Direct developer insights',
-        'VIP community access',
-        'Custom notification system',
+        '$200 AI token credits/month',
+        'Private projects',
+        'Premium AI Models',
+        'Priority support',
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_25_200.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_25_200_YEARLY.priceId,
@@ -224,23 +219,23 @@ export const siteConfig = {
     },
     {
       name: 'Enterprise',
-      price: '$299.99',
-      yearlyPrice: '$2999.99',
-      originalYearlyPrice: '$3599.88',
-      discountPercentage: 17,
-      description: 'For gaming organizations and media companies',
-      buttonText: 'Contact Sales',
+      price: '$400',
+      yearlyPrice: '$4080',
+      originalYearlyPrice: '$4800',
+      discountPercentage: 15,
+      description: 'For large organizations',
+      buttonText: 'Start Free',
       buttonColor: 'bg-secondary text-white',
       isPopular: false,
       hours: '50 hours',
       features: [
-        'Everything in Ultra',
-        'Team collaboration tools',
-        'Advanced analytics dashboard',
-        'White-label solutions',
+        '$400 AI token credits/month',
+        'Private projects',
+        'Premium AI Models',
+        'Full Suna AI access',
+        'Community support',
+        'Custom integrations',
         'Dedicated account manager',
-        'Custom verification workflows',
-        'SLA guarantee',
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_50_400.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_50_400_YEARLY.priceId,
@@ -248,24 +243,25 @@ export const siteConfig = {
       hidden: true,
     },
     {
-      name: 'Insider',
-      price: '$599.99',
-      yearlyPrice: '$5999.99',
-      originalYearlyPrice: '$7199.88',
-      discountPercentage: 17,
-      description: 'For the most dedicated GTA 6 insiders',
-      buttonText: 'Become Insider',
+      name: 'Scale',
+      price: '$800',
+      yearlyPrice: '$8160',
+      originalYearlyPrice: '$9600',
+      discountPercentage: 15,
+      description: 'For scaling enterprises',
+      buttonText: 'Start Free',
       buttonColor: 'bg-secondary text-white',
       isPopular: false,
       hours: '125 hours',
       features: [
-        'Everything in Enterprise',
-        'Exclusive insider network access',
-        'Real-time leak verification',
-        'Custom AI leak detection',
-        'Personal leak concierge',
-        'Direct Rockstar connections',
-        'Lifetime access guarantee',
+        '$800 AI token credits/month',
+        'Private projects',
+        'Premium AI Models',
+        'Full Suna AI access',
+        'Community support',
+        'Custom integrations',
+        'Dedicated account manager',
+        'Custom SLA',
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_125_800.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_125_800_YEARLY.priceId,
@@ -273,25 +269,26 @@ export const siteConfig = {
       hidden: true,
     },
     {
-      name: 'Legendary',
-      price: '$999.99',
-      yearlyPrice: '$9999.99',
-      originalYearlyPrice: '$11999.88',
-      discountPercentage: 17,
-      description: 'The legendary tier for true GTA 6 legends',
-      buttonText: 'Become Legend',
+      name: 'Premium',
+      price: '$1000',
+      yearlyPrice: '$10200',
+      originalYearlyPrice: '$12000',
+      discountPercentage: 15,
+      description: 'For maximum scale and performance',
+      buttonText: 'Start Free',
       buttonColor: 'bg-secondary text-white',
       isPopular: false,
       hours: '200 hours',
       features: [
-        'Everything in Insider',
-        'Exclusive Rockstar Games access',
-        'Beta testing opportunities',
-        'Custom leak verification AI',
-        'Personal GTA 6 assistant',
-        'Legacy hall of fame status',
-        'Exclusive event invitations',
-        'Collector edition privileges',
+        '$1000 AI token credits/month',
+        'Private projects',
+        'Premium AI Models',
+        'Full Suna AI access',
+        'Priority support',
+        'Custom integrations',
+        'Dedicated account manager',
+        'Custom SLA',
+        'White-label options',
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_200_1000.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_200_1000_YEARLY.priceId,
@@ -501,62 +498,62 @@ export const siteConfig = {
     ],
   },
   featureSection: {
-    title: 'How Leaker-Flow Works',
+    title: 'How Kortix Suna Works',
     description:
-      'Discover how Leaker-Flow transforms your commands into action in four easy steps',
+      'Discover how Kortix Suna transforms your commands into action in four easy steps',
     items: [
       {
         id: 1,
         title: 'Request an Action',
         content:
-          'Speak or type your command—let Leaker-Flow capture your intent. Your request instantly sets the process in motion.',
+          'Speak or type your command—let Kortix Suna capture your intent. Your request instantly sets the process in motion.',
         image:
           'https://images.unsplash.com/photo-1720371300677-ba4838fa0678?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       },
       {
         id: 2,
-        title: 'Information Verification',
+        title: 'AI Understanding & Planning',
         content:
-          'Our advanced verification system analyzes GTA 6 information from multiple sources, cross-references data, and provides reliability scores for each piece of content.',
+          'Suna analyzes your request, understands the context, and develops a structured plan to complete the task efficiently.',
         image:
           'https://images.unsplash.com/photo-1686170287433-c95faf6d3608?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwzfHx8ZW58MHx8fHx8fA%3D%3D',
       },
       {
         id: 3,
-        title: 'Real-time Monitoring',
+        title: 'Autonomous Execution',
         content:
-          'Continuous monitoring of official Rockstar channels, gaming forums, and social media platforms ensures you never miss important GTA 6 updates.',
+          'Using its capabilities and integrations, Suna executes the task independently, handling any complexities along the way.',
         image:
           'https://images.unsplash.com/photo-1720378042271-60aff1e1c538?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwxMHx8fGVufDB8fHx8fA%3D%3D',
       },
       {
         id: 4,
-        title: 'Community Insights',
+        title: 'Results & Learning',
         content:
-          'Aggregate community discussions, theories, and reactions to provide comprehensive insights into GTA 6 sentiment and expectations.',
+          'Suna delivers results and learns from each interaction, continuously improving its performance to better serve your needs.',
         image:
           'https://images.unsplash.com/photo-1666882990322-e7f3b8df4f75?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDF8fHxlbnwwfHx8fHw%3D',
       },
     ],
   },
   bentoSection: {
-    title: 'Your Ultimate GTA 6 Information Hub',
+    title: 'Empower Your Workflow with Kortix Suna',
     description:
-      'Stay ahead of the curve with comprehensive GTA 6 coverage, verified leaks, and real-time updates from the most trusted sources.',
+      'Let Kortix Suna act on your behalf with advanced AI capabilities, seamless integrations, and autonomous task execution.',
     items: [
       {
         id: 1,
         content: <FirstBentoAnimation />,
-        title: 'Verified Leak Detection',
+        title: 'Autonomous Task Execution',
         description:
-          'Advanced verification algorithms analyze and authenticate GTA 6 leaks from multiple sources, ensuring you get only credible information.',
+          'Experience true automation with Suna. Ask your AI Agent to complete tasks, research information, and handle complex workflows with minimal supervision.',
       },
       {
         id: 2,
         content: <SecondBentoAnimation />,
-        title: 'Multi-Source Monitoring',
+        title: 'Seamless Integrations',
         description:
-          'Comprehensive tracking across Rockstar official channels, gaming forums, social media, and insider sources for complete coverage.',
+          'Connect Suna to your existing tools for a unified workflow. Boost productivity through AI-powered interconnected systems.',
       },
       {
         id: 3,
@@ -568,45 +565,45 @@ export const siteConfig = {
             ]}
           />
         ),
-        title: 'Intelligent Analysis Dashboard',
+        title: 'Intelligent Data Analysis',
         description:
-          "Transform GTA 6 data into actionable insights. Track development progress, community sentiment, and market impact with real-time analytics.",
+          "Transform raw data into actionable insights in seconds. Make better decisions with Suna's real-time, adaptive intelligence.",
       },
       {
         id: 4,
         content: <FourthBentoAnimation once={false} />,
-        title: 'Community-Driven Platform',
+        title: 'Complete Customization',
         description:
-          'Built by GTA fans, for GTA fans. As an open source solution, the community contributes to verification processes and feature development.',
+          'Tailor Suna to your specific needs. As an open source solution, you have full control over its capabilities, integrations, and implementation.',
       },
     ],
   },
   benefits: [
     {
       id: 1,
-      text: "Stay informed with verified GTA 6 leaks and official updates in real-time.",
+      text: "Automate everyday tasks with Suna's powerful AI capabilities.",
       image: '/Device-6.png',
     },
     {
       id: 2,
-      text: 'Never miss important announcements with comprehensive monitoring.',
+      text: 'Increase productivity with autonomous task completion.',
       image: '/Device-7.png',
     },
     {
       id: 3,
-      text: 'Join a community of dedicated GTA fans sharing insights and theories.',
+      text: 'Improve focus on high-value work as Suna handles the routine.',
       image: '/Device-8.png',
     },
     {
       id: 4,
-      text: 'Access the most comprehensive GTA 6 information hub available.',
+      text: 'Access cutting-edge AI as an open source, transparent solution.',
       image: '/Device-1.png',
     },
   ],
   growthSection: {
-    title: 'Trusted & Transparent',
+    title: 'Open Source & Secure',
     description:
-      'Where reliable information meets complete transparency—designed to provide verified GTA 6 content while maintaining open community standards.',
+      'Where advanced security meets complete transparency—designed to protect your data while providing full access to the code.',
     items: [
       {
         id: 1,
@@ -886,9 +883,9 @@ export const siteConfig = {
           </div>
         ),
 
-        title: 'Verified Information Only',
+        title: 'Open Source Security',
         description:
-          'Every leak and rumor is fact-checked and verified before reaching you. No more false information or low-effort fakes.',
+          'Benefit from the security of open source code that thousands of eyes can review, audit, and improve.',
       },
       {
         id: 2,
@@ -900,23 +897,23 @@ export const siteConfig = {
 
         title: 'Community Powered',
         description:
-          'Join thousands of GTA fans contributing to the most comprehensive and reliable GTA 6 information database.',
+          "Join a thriving community of developers and users continuously enhancing and expanding Suna's capabilities.",
       },
     ],
   },
   quoteSection: {
     quote:
-      'Finally, a reliable source for GTA 6 information! No more sifting through countless fake leaks and rumors. Leaker-Flow delivers verified updates that I can actually trust.',
+      'Kortix Suna has transformed how we approach everyday tasks. The level of automation it provides, combined with its open source nature, makes it an invaluable tool for our entire organization.',
     author: {
-      name: 'Marcus Rodriguez',
-      role: 'GTA Community Leader',
+      name: 'Alex Johnson',
+      role: 'CTO, Innovatech',
       image: 'https://randomuser.me/api/portraits/men/91.jpg',
     },
   },
   pricing: {
-    title: 'Free Access to Verified Information',
+    title: 'Open Source & Free Forever',
     description:
-      'Get access to curated, verified GTA 6 information completely free. Premium features available for the most dedicated fans.',
+      'Kortix Suna is 100% open source and free to use. No hidden fees, no premium features locked behind paywalls.',
     pricingItems: [
       {
         name: 'Community',
@@ -925,53 +922,52 @@ export const siteConfig = {
         period: 'forever',
         yearlyPrice: 'Free',
         features: [
-          'Verified GTA 6 updates',
-          'Community discussions',
-          'Basic leak verification',
-          'Mobile notifications',
+          'Full agent capabilities',
+          'Unlimited usage',
+          'Full source code access',
+          'Community support',
         ],
-        description: 'Perfect for casual GTA 6 fans',
-        buttonText: 'Join Community',
+        description: 'Perfect for individual users and developers',
+        buttonText: 'Hire Suna',
         buttonColor: 'bg-accent text-primary',
         isPopular: false,
       },
       {
-        name: 'Premium',
+        name: 'Self-Hosted',
         href: '#',
-        price: '$4.99',
-        period: '/month',
-        yearlyPrice: '$49.99',
+        price: 'Free',
+        period: 'forever',
+        yearlyPrice: 'Free',
         features: [
-          'Everything in Community',
-          'Instant leak alerts',
-          'Advanced filtering',
-          'Historical leak database',
-          'Priority support',
-          'Ad-free experience',
-          'Custom notifications',
-          'Early access to features',
+          'Full agent capabilities',
+          'Unlimited usage',
+          'Full source code access',
+          'Custom deployment',
+          'Local data storage',
+          'Integration with your tools',
+          'Full customization',
+          'Community support',
         ],
-        description: 'For dedicated GTA 6 enthusiasts',
-        buttonText: 'Go Premium',
+        description: 'Ideal for organizations with specific requirements',
+        buttonText: 'View Docs',
         buttonColor: 'bg-secondary text-white',
         isPopular: true,
       },
       {
-        name: 'Creator',
+        name: 'Enterprise',
         href: '#',
-        price: '$19.99',
-        period: '/month',
-        yearlyPrice: '$199.99',
+        price: 'Custom',
+        period: '',
+        yearlyPrice: 'Custom',
         features: [
-          'Everything in Premium',
-          'API access',
-          'Content creator tools',
-          'Analytics dashboard',
-          'White-label options',
-          'Custom integrations',
+          'Everything in Self-Hosted',
+          'Priority support',
+          'Custom development',
+          'Dedicated hosting',
+          'SLA guarantees',
         ],
-        description: 'For content creators and GTA 6 news sites',
-        buttonText: 'Start Creating',
+        description: 'For large teams needing custom implementations',
+        buttonText: 'Contact Us',
         buttonColor: 'bg-primary text-primary-foreground',
         isPopular: false,
       },
@@ -981,85 +977,89 @@ export const siteConfig = {
     {
       id: '1',
       name: 'Alex Rivera',
-      role: 'GTA Content Creator',
+      role: 'CTO at InnovateTech',
       img: 'https://randomuser.me/api/portraits/men/91.jpg',
       description: (
         <p>
-          Leaker-Flow has completely changed how I cover GTA 6 news for my channel.
+          The AI-driven analytics from #QuantumInsights have revolutionized our
+          product development cycle.
           <Highlight>
-            No more wasting time on fake leaks - everything here is verified.
+            Insights are now more accurate and faster than ever.
           </Highlight>{' '}
-          Essential for any GTA content creator.
+          A game-changer for tech companies.
         </p>
       ),
     },
     {
       id: '2',
       name: 'Samantha Lee',
-      role: 'GTA Community Moderator',
+      role: 'Marketing Director at NextGen Solutions',
       img: 'https://randomuser.me/api/portraits/women/12.jpg',
       description: (
         <p>
-          Managing a 50k+ member GTA community became so much easier with Leaker-Flow.
-          <Highlight>Instant access to verified information means no more misinformation!</Highlight>{' '}
-          A must-have tool for community managers.
+          Implementing #AIStream&apos;s customer prediction model has
+          drastically improved our targeting strategy.
+          <Highlight>Seeing a 50% increase in conversion rates!</Highlight>{' '}
+          Highly recommend their solutions.
         </p>
       ),
     },
     {
       id: '3',
       name: 'Raj Patel',
-      role: 'Gaming Journalist',
+      role: 'Founder & CEO at StartUp Grid',
       img: 'https://randomuser.me/api/portraits/men/45.jpg',
       description: (
         <p>
-          As a gaming journalist, accuracy is everything. Leaker-Flow's verification system
-          gives me confidence in my reporting.
-          <Highlight>My GTA 6 articles are now the most trusted in the industry.</Highlight> 
-          Indispensable for professional gaming journalism.
+          As a startup, we need to move fast and stay ahead. #CodeAI&apos;s
+          automated coding assistant helps us do just that.
+          <Highlight>Our development speed has doubled.</Highlight> Essential
+          tool for any startup.
         </p>
       ),
     },
     {
       id: '4',
       name: 'Emily Chen',
-      role: 'GTA Fan & Reddit Moderator',
+      role: 'Product Manager at Digital Wave',
       img: 'https://randomuser.me/api/portraits/women/83.jpg',
       description: (
         <p>
-          Leaker-Flow has become my go-to source for all GTA 6 information.
-          <Highlight>Finally, a place where I can trust what I'm reading!</Highlight> 
-          Essential for any serious GTA fan.
+          #VoiceGen&apos;s AI-driven voice synthesis has made creating global
+          products a breeze.
+          <Highlight>Localization is now seamless and efficient.</Highlight> A
+          must-have for global product teams.
         </p>
       ),
     },
     {
       id: '5',
       name: 'Michael Brown',
-      role: 'Gaming News Editor',
+      role: 'Data Scientist at FinTech Innovations',
       img: 'https://randomuser.me/api/portraits/men/1.jpg',
       description: (
         <p>
-          As an editor, I need reliable sources. Leaker-Flow's verification system
-          gives me confidence in every story I publish.
+          Leveraging #DataCrunch&apos;s AI for our financial models has given us
+          an edge in predictive accuracy.
           <Highlight>
-            Our GTA 6 coverage accuracy has improved dramatically.
+            Our investment strategies are now powered by real-time data
+            analytics.
           </Highlight>{' '}
-          A must-have for gaming journalism.
+          Transformative for the finance industry.
         </p>
       ),
     },
     {
       id: '6',
       name: 'Linda Wu',
-      role: 'YouTube Gaming Channel Owner',
+      role: 'VP of Operations at LogiChain Solutions',
       img: 'https://randomuser.me/api/portraits/women/5.jpg',
       description: (
         <p>
-          Running a gaming channel means I need the latest verified information.
-          Leaker-Flow keeps my 100k+ subscribers informed with accurate GTA 6 updates.
+          #LogiTech&apos;s supply chain optimization tools have drastically
+          reduced our operational costs.
           <Highlight>
-            My channel's credibility has never been stronger.
+            Efficiency and accuracy in logistics have never been better.
           </Highlight>{' '}
         </p>
       ),
@@ -1067,81 +1067,174 @@ export const siteConfig = {
     {
       id: '7',
       name: 'Carlos Gomez',
-      role: 'Twitch Streamer & GTA Expert',
+      role: 'Head of R&D at EcoInnovate',
       img: 'https://randomuser.me/api/portraits/men/14.jpg',
       description: (
         <p>
-          Streaming GTA content daily means I need real-time updates.
-          Leaker-Flow's instant notifications keep me ahead of the curve.
+          By integrating #GreenTech&apos;s sustainable energy solutions,
+          we&apos;ve seen a significant reduction in carbon footprint.
           <Highlight>
-            My viewers always get the latest verified information first.
+            Leading the way in eco-friendly business practices.
           </Highlight>{' '}
-          Perfect for content creators.
+          Pioneering change in the industry.
         </p>
       ),
     },
-
+    {
+      id: '8',
+      name: 'Aisha Khan',
+      role: 'Chief Marketing Officer at Fashion Forward',
+      img: 'https://randomuser.me/api/portraits/women/56.jpg',
+      description: (
+        <p>
+          #TrendSetter&apos;s market analysis AI has transformed how we approach
+          fashion trends.
+          <Highlight>
+            Our campaigns are now data-driven with higher customer engagement.
+          </Highlight>{' '}
+          Revolutionizing fashion marketing.
+        </p>
+      ),
+    },
+    {
+      id: '9',
+      name: 'Tom Chen',
+      role: 'Director of IT at HealthTech Solutions',
+      img: 'https://randomuser.me/api/portraits/men/18.jpg',
+      description: (
+        <p>
+          Implementing #MediCareAI in our patient care systems has improved
+          patient outcomes significantly.
+          <Highlight>
+            Technology and healthcare working hand in hand for better health.
+          </Highlight>{' '}
+          A milestone in medical technology.
+        </p>
+      ),
+    },
+    {
+      id: '10',
+      name: 'Sofia Patel',
+      role: 'CEO at EduTech Innovations',
+      img: 'https://randomuser.me/api/portraits/women/73.jpg',
+      description: (
+        <p>
+          #LearnSmart&apos;s AI-driven personalized learning plans have doubled
+          student performance metrics.
+          <Highlight>
+            Education tailored to every learner&apos;s needs.
+          </Highlight>{' '}
+          Transforming the educational landscape.
+        </p>
+      ),
+    },
+    {
+      id: '11',
+      name: 'Jake Morrison',
+      role: 'CTO at SecureNet Tech',
+      img: 'https://randomuser.me/api/portraits/men/25.jpg',
+      description: (
+        <p>
+          With #CyberShield&apos;s AI-powered security systems, our data
+          protection levels are unmatched.
+          <Highlight>
+            Ensuring safety and trust in digital spaces.
+          </Highlight>{' '}
+          Redefining cybersecurity standards.
+        </p>
+      ),
+    },
+    {
+      id: '12',
+      name: 'Nadia Ali',
+      role: 'Product Manager at Creative Solutions',
+      img: 'https://randomuser.me/api/portraits/women/78.jpg',
+      description: (
+        <p>
+          #DesignPro&apos;s AI has streamlined our creative process, enhancing
+          productivity and innovation.
+          <Highlight>Bringing creativity and technology together.</Highlight> A
+          game-changer for creative industries.
+        </p>
+      ),
+    },
+    {
+      id: '13',
+      name: 'Omar Farooq',
+      role: 'Founder at Startup Hub',
+      img: 'https://randomuser.me/api/portraits/men/54.jpg',
+      description: (
+        <p>
+          #VentureAI&apos;s insights into startup ecosystems have been
+          invaluable for our growth and funding strategies.
+          <Highlight>
+            Empowering startups with data-driven decisions.
+          </Highlight>{' '}
+          A catalyst for startup success.
+        </p>
+      ),
+    },
   ],
   faqSection: {
     title: 'Frequently Asked Questions',
     description:
-      "Answers to common questions about GTA 6 leaks and Leaker-Flow. If you have any other questions, please don't hesitate to contact us.",
+      "Answers to common questions about Kortix Suna and its capabilities. If you have any other questions, please don't hesitate to contact us.",
     faQitems: [
       {
         id: 1,
-        question: 'How do you verify GTA 6 leaks and information?',
+        question: 'What is an AI Agent?',
         answer:
-          'We use a multi-layered verification process including source credibility analysis, cross-referencing with multiple sources, technical analysis of leaked content, and community validation from trusted members.',
+          'An AI Agent is an intelligent software program that can perform tasks autonomously, learn from interactions, and make decisions to help achieve specific goals. It combines artificial intelligence and machine learning to provide personalized assistance and automation.',
       },
       {
         id: 2,
-        question: 'Is Leaker-Flow affiliated with Rockstar Games?',
+        question: 'How does Kortix Suna work?',
         answer:
-          'No, Leaker-Flow is an independent platform created by and for the GTA community. We are not affiliated with Rockstar Games or Take-Two Interactive in any way.',
+          'Kortix Suna works by analyzing your requirements, leveraging advanced AI algorithms to understand context, and executing tasks based on your instructions. It can integrate with your workflow, learn from feedback, and continuously improve its performance.',
       },
       {
         id: 3,
-        question: 'How quickly do you update when new leaks appear?',
+        question: 'Is Kortix Suna really free?',
         answer:
-          'Our automated monitoring systems scan multiple sources 24/7. Verified information is typically available within minutes of initial detection, with full verification usually completed within hours.',
+          'Yes, Kortix Suna is completely free and open source. We believe in democratizing AI technology and making it accessible to everyone. You can use it, modify it, and contribute to its development without any cost.',
       },
       {
         id: 4,
-        question: 'Can I contribute information or leaks to the platform?',
+        question: 'Can I integrate Suna with my existing tools?',
         answer:
-          'Yes! Community contributions are essential to our mission. You can submit information through our secure submission system, and our verification team will review and validate the content.',
+          'Yes, Kortix Suna is designed to be highly compatible with popular tools and platforms. We offer APIs and pre-built integrations for seamless connection with your existing workflow tools and systems.',
       },
       {
         id: 5,
-        question: 'What happens when GTA 6 is officially released?',
+        question: 'How can I contribute to Kortix Suna?',
         answer:
-          'Leaker-Flow will evolve to cover official updates, DLC information, community content, and will expand to cover other highly anticipated games and entertainment properties.',
+          'You can contribute to Kortix Suna by submitting pull requests on GitHub, reporting bugs, suggesting new features, or helping with documentation. Join our Discord community to connect with other contributors and Hire Suna.',
       },
       {
         id: 6,
-        question: 'Is the basic service really free?',
+        question: 'How does Kortix Suna save me time?',
         answer:
-          'Yes, our Community tier is completely free and provides access to verified GTA 6 updates, community discussions, and basic leak verification. Premium tiers offer additional features for dedicated fans.',
+          'Kortix Suna automates repetitive tasks, streamlines workflows, and provides quick solutions to common challenges. This automation and efficiency can save hours of manual work, allowing you to focus on more strategic activities.',
       },
     ],
   },
   ctaSection: {
     id: 'cta',
-    title: 'Join the GTA 6 Community Today',
+    title: 'Start Using Kortix Suna Today',
     backgroundImage: '/holo.png',
     button: {
-      text: 'Get Verified Updates',
+      text: 'Get Started for free',
       href: '/auth',
     },
-    subtext: 'Your trusted source for verified GTA 6 information and leaks',
+    subtext: 'The generalist AI Agent that acts on your behalf',
   },
   footerLinks: [
     {
-      title: 'Leaker-Flow',
+      title: 'Kortix',
       links: [
-        { id: 1, title: 'About', url: 'https://leaker-flow.com' },
-        { id: 3, title: 'Contact', url: 'mailto:hey@gta6hub.com' },
-        { id: 4, title: 'Careers', url: 'https://leaker-flow.com/careers' },
+        { id: 1, title: 'About', url: 'https://kortix.ai' },
+        { id: 3, title: 'Contact', url: 'mailto:hey@kortix.ai' },
+        { id: 4, title: 'Careers', url: 'https://kortix.ai/careers' },
       ],
     },
     {
@@ -1150,10 +1243,10 @@ export const siteConfig = {
         {
           id: 5,
           title: 'Documentation',
-          url: 'https://github.com/leaker-flow/leaker-flow',
+          url: 'https://github.com/Kortix-ai/Suna',
         },
         { id: 7, title: 'Discord', url: 'https://discord.gg/Py6pCBUUPw' },
-        { id: 8, title: 'GitHub', url: 'https://github.com/leaker-flow/leaker-flow' },
+        { id: 8, title: 'GitHub', url: 'https://github.com/Kortix-ai/Suna' },
       ],
     },
     {
@@ -1162,28 +1255,28 @@ export const siteConfig = {
         {
           id: 9,
           title: 'Privacy Policy',
-          url: 'https://leaker-flow.com/legal?tab=privacy',
+          url: 'https://suna.so/legal?tab=privacy',
         },
         {
           id: 10,
           title: 'Terms of Service',
-          url: 'https://leaker-flow.com/legal?tab=terms',
+          url: 'https://suna.so/legal?tab=terms',
         },
         {
           id: 11,
           title: 'License Apache 2.0',
-          url: 'https://github.com/leaker-flow/leaker-flow/blob/main/LICENSE',
+          url: 'https://github.com/Kortix-ai/Suna/blob/main/LICENSE',
         },
       ],
     },
   ],
   useCases: [
     {
-      id: 'gta6-leak-verification',
-      title: 'GTA 6 Leak Verification',
+      id: 'competitor-analysis',
+      title: 'Competitor Analysis',
       description:
-        'Verify the authenticity of recent GTA 6 leaks and rumors. Cross-reference multiple sources, analyze credibility scores, and generate a comprehensive verification report with evidence and reliability ratings.',
-      category: 'verification',
+        'Analyze the market for my next company in the healthcare industry, located in the UK. Give me the major players, their market size, strengths, and weaknesses, and add their website URLs. Once done, generate a PDF report.',
+      category: 'research',
       featured: true,
       icon: (
         <svg
@@ -1194,14 +1287,21 @@ export const siteConfig = {
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            d="M9 12L11 14L15 10"
+            d="M7.75 19.25H16.25C17.3546 19.25 18.25 18.3546 18.25 17.25V8.75L13.75 4.25H7.75C6.64543 4.25 5.75 5.14543 5.75 6.25V17.25C5.75 18.3546 6.64543 19.25 7.75 19.25Z"
             stroke="currentColor"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           <path
-            d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+            d="M18 9L14 9C13.4477 9 13 8.55228 13 8L13 4"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M9.5 14.5L11 13L12.5 14.5L14.5 12.5"
             stroke="currentColor"
             strokeWidth="1.5"
             strokeLinecap="round"
@@ -1210,15 +1310,15 @@ export const siteConfig = {
         </svg>
       ),
       image:
-        'https://images.unsplash.com/photo-1511512578047-dfb367046420?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/gta6-leak-verification',
+        'https://images.unsplash.com/photo-1576091160550-2173dba999ef?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
+      url: 'https://suna.so/share/2fbf0552-87d6-4d12-be25-d54f435bc493',
     },
     {
-      id: 'rockstar-news-tracking',
-      title: 'Rockstar Games News Tracking',
+      id: 'vc-list',
+      title: 'VC List',
       description:
-        'Monitor official Rockstar Games announcements, press releases, and social media updates. Get instant notifications when new GTA 6 information is officially released with source verification.',
-      category: 'tracking',
+        'Give me the list of the most important VC Funds in the United States based on Assets Under Management. Give me website URLs, and if possible an email to reach them out.',
+      category: 'finance',
       featured: true,
       icon: (
         <svg
@@ -1229,7 +1329,14 @@ export const siteConfig = {
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z"
+            d="M12 4.75L19.25 9L12 13.25L4.75 9L12 4.75Z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M9.25 11.5L4.75 14L12 18.25L19.25 14L14.6722 11.5"
             stroke="currentColor"
             strokeWidth="1.5"
             strokeLinecap="round"
@@ -1238,15 +1345,15 @@ export const siteConfig = {
         </svg>
       ),
       image:
-        'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/rockstar-news-tracking',
+        'https://images.unsplash.com/photo-1444653614773-995cb1ef9efa?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
+      url: 'https://suna.so/share/a172382b-aa77-42a2-a3e1-46f32a0f9c37',
     },
     {
-      id: 'community-sentiment',
-      title: 'GTA 6 Community Sentiment Analysis',
+      id: 'candidate-search',
+      title: 'Looking for Candidates',
       description:
-        'Analyze community reactions and sentiment across Reddit, Twitter, YouTube, and gaming forums regarding GTA 6 leaks and announcements. Generate comprehensive sentiment reports with trending topics.',
-      category: 'analysis',
+        "Go on LinkedIn, and find 10 profiles available - they are not working right now - for a junior software engineer position, who are located in Munich, Germany. They should have at least one bachelor's degree in Computer Science or anything related to it, and 1-year of experience in any field/role.",
+      category: 'recruitment',
       featured: true,
       icon: (
         <svg
@@ -1257,7 +1364,21 @@ export const siteConfig = {
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            d="M21 11.5C21.0034 12.8199 20.6951 14.1219 20.1 15.3C19.3944 16.7118 18.3098 17.8992 16.9674 18.7293C15.6251 19.5594 14.0782 19.9994 12.5 20C11.1801 20.0035 9.87812 19.6951 8.7 19.1L3 21L4.9 15.3C4.30493 14.1219 3.99656 12.8199 4 11.5C4.00061 9.92179 4.44061 8.37488 5.27072 7.03258C6.10083 5.69028 7.28825 4.6056 8.7 3.90003C9.87812 3.30496 11.1801 2.99659 12.5 3.00003H13C15.0843 3.11502 17.053 3.99479 18.5291 5.47089C20.0052 6.94699 20.885 8.91568 21 11V11.5Z"
+            d="M17.25 10C17.25 12.8995 14.8995 15.25 12 15.25C9.10051 15.25 6.75 12.8995 6.75 10C6.75 7.10051 9.10051 4.75 12 4.75C14.8995 4.75 17.25 7.10051 17.25 10Z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M8.25 14.75L5.25 19.25"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M15.75 14.75L18.75 19.25"
             stroke="currentColor"
             strokeWidth="1.5"
             strokeLinecap="round"
@@ -1266,15 +1387,15 @@ export const siteConfig = {
         </svg>
       ),
       image:
-        'https://images.unsplash.com/photo-1611224923853-80b023f02d71?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/community-sentiment',
+        'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
+      url: 'https://suna.so/share/d9e39c94-4f6f-4b5a-b1a0-b681bfe0dee8',
     },
     {
-      id: 'gta6-timeline-tracker',
-      title: 'GTA 6 Development Timeline',
+      id: 'company-trip',
+      title: 'Planning Company Trip',
       description:
-        'Track and visualize the complete GTA 6 development timeline from first rumors to release. Monitor key milestones, official announcements, and verified leaks with interactive timeline visualization.',
-      category: 'tracking',
+        "Generate a route plan for my company. We should go to California. We'll be 8 people. Compose the trip from the departure (Paris, France) to the activities we can do considering that the trip will be 7 days long - departure on the 21st of Jun 2025.",
+      category: 'travel',
       featured: true,
       icon: (
         <svg
@@ -1316,13 +1437,13 @@ export const siteConfig = {
       ),
       image:
         'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/gta6-timeline-tracker',
+      url: 'https://suna.so/share/23f7d904-eb66-4a9c-9247-b9704ddfd233',
     },
     {
-      id: 'gta6-leak-database',
-      title: 'GTA 6 Leak Database Management',
+      id: 'excel-spreadsheet',
+      title: 'Working on Excel',
       description:
-        'Organize and categorize all GTA 6 leaks, rumors, and official information in a comprehensive database. Track sources, credibility ratings, verification status, and cross-references.',
+        'My company asked to set up an Excel spreadsheet with all the information about Italian lottery games (Lotto, 10eLotto, and Million Day). Based on that, generate and send me a spreadsheet with all the basic information (public ones).',
       category: 'data',
       featured: true,
       icon: (
@@ -1358,14 +1479,14 @@ export const siteConfig = {
       ),
       image:
         'https://images.unsplash.com/photo-1532153975070-2e9ab71f1b14?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/gta6-leak-database',
+      url: 'https://suna.so/share/2a147a3a-3778-4624-8285-42474c8c1c9c',
     },
     {
-      id: 'gta6-influencer-tracking',
-      title: 'GTA 6 Influencer & Content Creator Tracking',
+      id: 'speaker-prospecting',
+      title: 'Automate Event Speaker Prospecting',
       description:
-        'Monitor top gaming influencers, YouTubers, and content creators for GTA 6 coverage. Track their predictions, reactions to leaks, and audience engagement metrics for comprehensive community insights.',
-      category: 'tracking',
+        "Find 20 AI ethics speakers from Europe who've spoken at conferences in the past year. Scrapes conference sites, cross-references LinkedIn and YouTube, and outputs contact info + talk summaries.",
+      category: 'research',
       featured: true,
       icon: (
         <svg
@@ -1400,14 +1521,14 @@ export const siteConfig = {
       ),
       image:
         'https://images.unsplash.com/photo-1523580494863-6f3031224c94?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/gta6-influencer-tracking',
+      url: 'https://suna.so/share/6830cc6d-3fbd-492a-93f8-510a5f48ce50',
     },
     {
-      id: 'gta6-media-analysis',
-      title: 'GTA 6 Media Coverage Analysis',
+      id: 'scientific-papers',
+      title: 'Summarize and Cross-Reference Scientific Papers',
       description:
-        'Analyze and summarize GTA 6 coverage across gaming media outlets, news sites, and publications. Compare reporting accuracy, identify trending narratives, and track media sentiment over time.',
-      category: 'analysis',
+        'Research and compare scientific papers talking about Alcohol effects on our bodies during the last 5 years. Generate a report about the most important scientific papers talking about the topic I wrote before.',
+      category: 'research',
       featured: true,
       icon: (
         <svg
@@ -1442,14 +1563,14 @@ export const siteConfig = {
       ),
       image:
         'https://images.unsplash.com/photo-1532153975070-2e9ab71f1b14?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/gta6-media-analysis',
+      url: 'https://suna.so/share/a106ef9f-ed97-46ee-8e51-7bfaf2ac3c29',
     },
     {
-      id: 'gta6-community-outreach',
-      title: 'GTA 6 Community Engagement & Outreach',
+      id: 'lead-generation',
+      title: 'Research + First Contact Draft',
       description:
-        'Connect with GTA 6 community leaders, moderators, and active members across platforms. Generate personalized outreach messages to build relationships and expand the verified information network.',
-      category: 'community',
+        'Research my potential customers (B2B) on LinkedIn. They should be in the clean tech industry. Find their websites and their email addresses. After that, based on the company profile, generate a personalized first contact email.',
+      category: 'sales',
       featured: true,
       icon: (
         <svg
@@ -1484,13 +1605,13 @@ export const siteConfig = {
       ),
       image:
         'https://images.unsplash.com/photo-1552581234-26160f608093?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/gta6-community-outreach',
+      url: 'https://suna.so/share/c3472df7-adc1-4d5f-9927-4f8f513ec2fe',
     },
     {
-      id: 'gta6-seo-optimization',
-      title: 'GTA 6 SEO & Content Optimization',
+      id: 'seo-analysis',
+      title: 'SEO Analysis',
       description:
-        'Optimize content strategy for GTA 6 keywords and trending topics. Analyze search volumes, competitor rankings, and identify content gaps to maximize organic reach in the GTA 6 community.',
+        "Based on my website suna.so, generate an SEO report analysis, find top-ranking pages by keyword clusters, and identify topics I'm missing.",
       category: 'marketing',
       featured: true,
       icon: (
@@ -1533,14 +1654,14 @@ export const siteConfig = {
       ),
       image:
         'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/gta6-seo-optimization',
+      url: 'https://suna.so/share/cf756e02-fee9-4281-a0e4-76ac850f1ac9',
     },
     {
-      id: 'gta6-event-planning',
-      title: 'GTA 6 Community Event Planning',
+      id: 'personal-trip',
+      title: 'Generate a Personal Trip',
       description:
-        'Plan and organize GTA 6 community events, watch parties for trailers, and meetups. Find venues, coordinate schedules, and manage community engagement for major GTA 6 announcements.',
-      category: 'community',
+        'Generate a personal trip to London, with departure from Bangkok on the 1st of May. The trip will last 10 days. Find an accommodation in the center of London, with a rating on Google reviews of at least 4.5.',
+      category: 'travel',
       featured: true,
       icon: (
         <svg
@@ -1582,14 +1703,14 @@ export const siteConfig = {
       ),
       image:
         'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/gta6-event-planning',
+      url: 'https://suna.so/share/8442cc76-ac8b-438c-b539-4b93909a2218',
     },
     {
-      id: 'gta6-market-analysis',
-      title: 'GTA 6 Market Impact Analysis',
+      id: 'funded-startups',
+      title: 'Recently Funded Startups',
       description:
-        'Analyze the potential market impact of GTA 6 release on gaming industry, stock prices, and related businesses. Track pre-order numbers, competitor responses, and market predictions.',
-      category: 'analysis',
+        'Go on Crunchbase, Dealroom, and TechCrunch, filter by Series A funding rounds in the SaaS Finance Space, and build a report with company data, founders, and contact info for outbound sales.',
+      category: 'finance',
       featured: true,
       icon: (
         <svg
@@ -1617,14 +1738,14 @@ export const siteConfig = {
       ),
       image:
         'https://images.unsplash.com/photo-1444653614773-995cb1ef9efa?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/gta6-market-analysis',
+      url: 'https://suna.so/share/f04c871c-6bf5-4464-8e9c-5351c9cf5a60',
     },
     {
-      id: 'gta6-forum-monitoring',
-      title: 'GTA 6 Forum & Discussion Monitoring',
+      id: 'scrape-forums',
+      title: 'Scrape Forum Discussions',
       description:
-        'Monitor and analyze discussions across gaming forums, Reddit communities, and Discord servers for GTA 6 conversations. Extract insights, trending topics, and community sentiment.',
-      category: 'monitoring',
+        'I need to find the best beauty centers in Rome, but I want to find them by using open forums that speak about this topic. Go on Google, and scrape the forums by looking for beauty center discussions located in Rome.',
+      category: 'research',
       featured: true,
       icon: (
         <svg
@@ -1659,7 +1780,7 @@ export const siteConfig = {
       ),
       image:
         'https://images.unsplash.com/photo-1523580494863-6f3031224c94?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
-      url: 'https://leaker-flow.com/share/gta6-forum-monitoring',
+      url: 'https://suna.so/share/53bcd4c7-40d6-4293-9f69-e2638ddcfad8',
     },
   ],
 };

@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'App Profiles | Leaker-Flow',
+  title: 'App Profiles | Kortix Suna',
   description: 'Manage your connected app integrations',
   openGraph: {
-    title: 'App Profiles | Leaker-Flow',
+    title: 'App Profiles | Kortix Suna',
     description: 'Manage your connected app integrations',
     type: 'website',
   },
