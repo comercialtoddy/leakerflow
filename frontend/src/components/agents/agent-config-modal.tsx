@@ -105,7 +105,7 @@ export const AgentConfigModal: React.FC<AgentConfigModalProps> = ({
     }
   };
 
-  const displayName = agent?.name || 'Leaker-Flow';
+  const displayName = agent?.name || 'Suna';
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -290,4 +290,4 @@ export const AgentConfigModal: React.FC<AgentConfigModalProps> = ({
       </DialogContent>
     </Dialog>
   );
-};
+}; 
