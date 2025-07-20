@@ -70,39 +70,39 @@ export const MarketplaceTab = ({
                   <Skeleton className="h-10 rounded-full" />
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : allMarketplaceItems.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">
-            {marketplaceSearchQuery 
-              ? "No templates found matching your criteria. Try adjusting your search or filters."
-              : "No agent templates are currently available in the marketplace."}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-12">
-          {marketplaceFilter === 'all' ? (
-            <>
-              {leakerFlowTeamItems.length > 0 && (
-                <div className="space-y-6">
-                  <MarketplaceSectionHeader
-                    title="Verified by Leaker-Flow"
-                    subtitle="Official agents, maintained and supported"
-                  />
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {leakerFlowTeamItems.map((item) => (
-                      <AgentCard
-                        key={item.id}
-                        mode="marketplace"
-                        data={item}
-                        styling={getItemStyling(item)}
-                        isActioning={installingItemId === item.id}
-                        onPrimaryAction={onInstallClick}
-                        onClick={() => onInstallClick(item)}
-                      />
-                    ))}
+            ))}
+          </div>
+        ) : allMarketplaceItems.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">
+              {marketplaceSearchQuery 
+                ? "No templates found matching your criteria. Try adjusting your search or filters."
+                : "No agent templates are currently available in the marketplace."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-12">
+            {marketplaceFilter === 'all' ? (
+              <>
+                {leakerFlowTeamItems.length > 0 && (
+                  <div className="space-y-6">
+                    <MarketplaceSectionHeader
+                      title="Verified by Leaker-Flow"
+                      subtitle="Official agents, maintained and supported"
+                    />
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {leakerFlowTeamItems.map((item) => (
+                        <AgentCard
+                          key={item.id}
+                          mode="marketplace"
+                          data={item}
+                          styling={getItemStyling(item)}
+                          isActioning={installingItemId === item.id}
+                          onPrimaryAction={onInstallClick}
+                          onClick={() => onInstallClick(item)}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
                 {communityItems.length > 0 && (
