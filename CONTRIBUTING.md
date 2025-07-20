@@ -1,6 +1,6 @@
-# Contributing to Leaker-Flow
+# Contributing to Suna
 
-Thank you for your interest in contributing to Leaker-Flow! This document outlines the contribution process and guidelines.
+Thank you for your interest in contributing to Suna! This document outlines the contribution process and guidelines.
 
 ## Contribution Workflow
 

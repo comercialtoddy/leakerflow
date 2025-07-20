@@ -1,6 +1,6 @@
-# Leaker-Flow Self-Hosting Guide
+# Suna Self-Hosting Guide
 
-This guide provides detailed instructions for setting up and hosting your own instance of Leaker-Flow, an open-source generalist AI agent.
+This guide provides detailed instructions for setting up and hosting your own instance of Suna, an open-source generalist AI agent.
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@ This guide provides detailed instructions for setting up and hosting your own in
 
 ## Overview
 
-Leaker-Flow consists of four main components:
+Suna consists of four main components:
 
 1. **Backend API** - Python/FastAPI service for REST endpoints, thread management, and LLM integration
 2. **Backend Worker** - Python/Dramatiq worker service for handling agent tasks
@@ -82,8 +82,8 @@ For manual setup, you'll also need:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/leaker-flow/leaker-flow.git
-cd leaker-flow
+git clone https://github.com/kortix-ai/suna.git
+cd suna
 ```
 
 ### 2. Run the Setup Wizard
@@ -101,7 +101,7 @@ The wizard will:
 - Set up the Supabase database
 - Configure environment files
 - Install dependencies
-- Start Leaker-Flow using your preferred method
+- Start Suna using your preferred method
 
 The setup wizard has 14 steps and includes progress saving, so you can resume if interrupted.
 
@@ -226,7 +226,7 @@ After completing the installation, you'll need to:
 
 ## Startup Options
 
-Leaker-Flow can be started in two ways:
+Suna can be started in two ways:
 
 ### 1. Using Docker Compose (Recommended)
 
@@ -340,4 +340,4 @@ The wizard will detect your progress and continue from the last completed step.
 
 ---
 
-For further assistance, join the [Leaker-Flow Discord Community](https://discord.gg/Py6pCBUUPw) or check the [GitHub repository](https://github.com/leaker-flow/leaker-flow) for updates and issues.
+For further assistance, join the [Suna Discord Community](https://discord.gg/Py6pCBUUPw) or check the [GitHub repository](https://github.com/kortix-ai/suna) for updates and issues.

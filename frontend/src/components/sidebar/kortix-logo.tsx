@@ -4,10 +4,10 @@ import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
-interface LeakerFlowLogoProps {
+interface KortixLogoProps {
   size?: number;
 }
-export function LeakerFlowLogo({ size = 24 }: LeakerFlowLogoProps) {
+export function KortixLogo({ size = 24 }: KortixLogoProps) {
   const { theme, systemTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -22,8 +22,8 @@ export function LeakerFlowLogo({ size = 24 }: LeakerFlowLogoProps) {
 
   return (
     <Image
-        src="/leaker-flow-symbol.svg"
-        alt="Leaker-Flow"
+        src="/kortix-symbol.svg"
+        alt="Kortix"
         width={size}
         height={size}
         className={`${shouldInvert ? 'invert' : ''} flex-shrink-0`}

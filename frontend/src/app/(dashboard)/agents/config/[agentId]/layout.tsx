@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Create Agent | Leaker-Flow',
+  title: 'Create Agent | Kortix Suna',
   description: 'Create an agent',
   openGraph: {
-    title: 'Create Agent | Leaker-Flow',
+    title: 'Create Agent | Kortix Suna',
     description: 'Create an agent',
     type: 'website',
   },

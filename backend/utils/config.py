@@ -176,8 +176,8 @@ class Configuration:
     OPENROUTER_API_KEY: Optional[str] = None
     XAI_API_KEY: Optional[str] = None
     OPENROUTER_API_BASE: Optional[str] = "https://openrouter.ai/api/v1"
-    OR_SITE_URL: Optional[str] = "https://leaker-flow.com"
-    OR_APP_NAME: Optional[str] = "Leaker-Flow"    
+    OR_SITE_URL: Optional[str] = "https://kortix.ai"
+    OR_APP_NAME: Optional[str] = "Kortix AI"    
     
     # AWS Bedrock credentials
     AWS_ACCESS_KEY_ID: Optional[str] = None
@@ -315,4 +315,4 @@ class Configuration:
         }
 
 # Create a singleton instance
-config = Configuration()
+config = Configuration() 

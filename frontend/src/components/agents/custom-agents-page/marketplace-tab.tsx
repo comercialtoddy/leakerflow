@@ -11,11 +11,11 @@ import type { MarketplaceTemplate } from '@/components/agents/installation/types
 interface MarketplaceTabProps {
   marketplaceSearchQuery: string;
   setMarketplaceSearchQuery: (value: string) => void;
-  marketplaceFilter: 'all' | 'leaker-flow' | 'community';
-  setMarketplaceFilter: (value: 'all' | 'leaker-flow' | 'community') => void;
+  marketplaceFilter: 'all' | 'kortix' | 'community';
+  setMarketplaceFilter: (value: 'all' | 'kortix' | 'community') => void;
   marketplaceLoading: boolean;
   allMarketplaceItems: MarketplaceTemplate[];
-  leakerFlowTeamItems: MarketplaceTemplate[];
+  kortixTeamItems: MarketplaceTemplate[];
   communityItems: MarketplaceTemplate[];
   installingItemId: string | null;
   onInstallClick: (item: MarketplaceTemplate, e?: React.MouseEvent) => void;
@@ -29,7 +29,7 @@ export const MarketplaceTab = ({
   setMarketplaceFilter,
   marketplaceLoading,
   allMarketplaceItems,
-  leakerFlowTeamItems,
+  kortixTeamItems,
   communityItems,
   installingItemId,
   onInstallClick,
@@ -43,13 +43,13 @@ export const MarketplaceTab = ({
           value={marketplaceSearchQuery}
           onChange={setMarketplaceSearchQuery}
         />
-        <Select value={marketplaceFilter} onValueChange={(value: 'all' | 'leaker-flow' | 'community') => setMarketplaceFilter(value)}>
+        <Select value={marketplaceFilter} onValueChange={(value: 'all' | 'kortix' | 'community') => setMarketplaceFilter(value)}>
           <SelectTrigger className="w-[180px] h-12 rounded-xl">
             <SelectValue placeholder="Filter agents" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Agents</SelectItem>
-            <SelectItem value="leaker-flow">Leaker-Flow Verified</SelectItem>
+            <SelectItem value="kortix">Kortix Verified</SelectItem>
             <SelectItem value="community">Community</SelectItem>
           </SelectContent>
         </Select>
@@ -70,39 +70,39 @@ export const MarketplaceTab = ({
                   <Skeleton className="h-10 rounded-full" />
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : allMarketplaceItems.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">
-            {marketplaceSearchQuery 
-              ? "No templates found matching your criteria. Try adjusting your search or filters."
-              : "No agent templates are currently available in the marketplace."}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-12">
-          {marketplaceFilter === 'all' ? (
-            <>
-              {leakerFlowTeamItems.length > 0 && (
-                <div className="space-y-6">
-                  <MarketplaceSectionHeader
-                    title="Verified by Leaker-Flow"
-                    subtitle="Official agents, maintained and supported"
-                  />
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {leakerFlowTeamItems.map((item) => (
-                      <AgentCard
-                        key={item.id}
-                        mode="marketplace"
-                        data={item}
-                        styling={getItemStyling(item)}
-                        isActioning={installingItemId === item.id}
-                        onPrimaryAction={onInstallClick}
-                        onClick={() => onInstallClick(item)}
-                      />
-                    ))}
+            ))}
+          </div>
+        ) : allMarketplaceItems.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">
+              {marketplaceSearchQuery 
+                ? "No templates found matching your criteria. Try adjusting your search or filters."
+                : "No agent templates are currently available in the marketplace."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-12">
+            {marketplaceFilter === 'all' ? (
+              <>
+                {kortixTeamItems.length > 0 && (
+                  <div className="space-y-6">
+                    <MarketplaceSectionHeader
+                      title="Verified by Kortix"
+                      subtitle="Official agents, maintained and supported"
+                    />
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {kortixTeamItems.map((item) => (
+                        <AgentCard
+                          key={item.id}
+                          mode="marketplace"
+                          data={item}
+                          styling={getItemStyling(item)}
+                          isActioning={installingItemId === item.id}
+                          onPrimaryAction={onInstallClick}
+                          onClick={() => onInstallClick(item)}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
                 {communityItems.length > 0 && (
@@ -143,4 +143,4 @@ export const MarketplaceTab = ({
       </div>
     </div>
   );
-};
+}; 
