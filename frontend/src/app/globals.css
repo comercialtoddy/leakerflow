@@ -572,7 +572,17 @@
 
 /* Leaker Flow: brand gradient utilities (centralized) */
 .bg-brand-gradient { background-image: var(--brand-gradient) !important; background-size: 150% 150%; }
-.text-brand-gradient { background: var(--brand-gradient) !important; -webkit-background-clip: text; background-clip: text; color: transparent; }
+.text-brand-gradient {
+  background-image: var(--brand-gradient) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  background-position: 0 0 !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  display: inline-block; /* avoid block overlay */
+}
 
 /* Apply brand gradient to primary/secondary CTA-like elements without editing each component */
 /* Buttons (shadcn/ui sets data-slot="button") */

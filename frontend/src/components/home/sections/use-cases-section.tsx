@@ -30,10 +30,10 @@ export function UseCasesSection() {
     >
       <SectionHeader>
         <h2 className="text-3xl md:text-4xl font-medium tracking-tighter text-center text-balance">
-          See Suna in action
+          <span className="text-brand-gradient">See Leaker Flow in action</span>
         </h2>
         <p className="text-muted-foreground text-center text-balance font-medium">
-          Explore real-world examples of how Suna completes complex tasks
+          Explore real-world examples of how Leaker Flow completes complex tasks
           autonomously
         </p>
       </SectionHeader>
@@ -47,14 +47,14 @@ export function UseCasesSection() {
             >
               <div className="flex flex-col gap-4 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-full bg-secondary/10 p-2">
+                  <div className="rounded-full p-2 bg-brand-gradient">
                     <svg
                       width="16"
                       height="16"
                       viewBox="0 0 24 24"
                       fill="none"
                       xmlns="http://www.w3.org/2000/svg"
-                      className="text-secondary"
+                      className="text-white"
                     >
                       {useCase.icon}
                     </svg>
@@ -76,9 +76,9 @@ export function UseCasesSection() {
                     <img
                       src={
                         useCase.image ||
-                        `https://placehold.co/800x400/f5f5f5/666666?text=Suna+${useCase.title.split(' ').join('+')}`
+                        `https://placehold.co/800x400/f5f5f5/666666?text=Leaker+Flow+${useCase.title.split(' ').join('+')}`
                       }
-                      alt={`Suna ${useCase.title}`}
+                      alt={`Leaker Flow ${useCase.title}`}
                       className="w-full h-full object-cover"
                     />
                     <a
