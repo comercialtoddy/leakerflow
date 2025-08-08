@@ -59,7 +59,7 @@ export interface PricingTier {
 
 export const siteConfig = {
   name: 'Leaker Flow',
-  description: 'O Agente de IA generalista que age por você.',
+  description: 'Leaker Flow is a generalist AI agent that acts on your behalf.',
   cta: 'Start Free',
   url: process.env.NEXT_PUBLIC_APP_URL || 'https://leakerflow.com',
   keywords: ['AI Agent', 'Generalist AI', 'Open Source AI', 'Autonomous Agent'],
@@ -109,8 +109,8 @@ export const siteConfig = {
     githubUrl: 'https://github.com/leakerflow/leakerflow',
     title: 'Leaker Flow, the AI Employee.',
     description:
-      'Leaker Flow é um agente de IA generalista que age por você.',
-    inputPlaceholder: 'Peça ao Leaker Flow para...',
+      'Leaker Flow is a generalist AI agent that acts on your behalf.',
+    inputPlaceholder: 'Ask Leaker Flow to...',
   },
   cloudPricingItems: [
     {
@@ -314,7 +314,6 @@ export const siteConfig = {
             <path d="M77.4609 22.617H80.1683V15.6682C80.1683 13.9761 81.4091 13.0737 82.6274 13.0737C84.1164 13.0737 84.703 14.1341 84.703 15.6005V22.617H87.4103V14.8109C87.4103 12.2615 85.9213 10.5469 83.4396 10.5469C81.9054 10.5469 80.8451 11.2463 80.1683 12.0359V10.7725H77.4609V22.617Z" />
             <path d="M95.3397 6.41797L89.2031 22.6167H92.0684L93.4446 18.9167H100.438L101.837 22.6167H104.748L98.611 6.41797H95.3397ZM96.919 9.62163L99.4909 16.3899H94.3921L96.919 9.62163Z" />
             <path d="M109.396 6.46484H106.508V22.6636H109.396V6.46484Z" />
-            <path d="M27.9278 12.3665C28.6102 10.3182 28.3752 8.07433 27.2838 6.21115C25.6425 3.35343 22.343 1.88321 19.1205 2.57508C17.687 0.960086 15.6273 0.0416664 13.4681 0.054827C10.1742 0.0473067 7.25158 2.16804 6.2382 5.30213C4.12219 5.73551 2.29568 7.06002 1.22685 8.93727C-0.426682 11.7875 -0.0497272 15.3803 2.15937 17.8244C1.4769 19.8728 1.71191 22.1166 2.8033 23.9798C4.4446 26.8375 7.74416 28.3078 10.9666 27.6159C12.3992 29.2309 14.4598 30.1494 16.6191 30.1352C19.9149 30.1437 22.8384 28.021 23.8518 24.8841C25.9678 24.4508 27.7943 23.1263 28.8631 21.249C30.5148 18.3988 30.137 14.8088 27.9287 12.3646L27.9278 12.3665ZM16.621 28.1696C15.3021 28.1714 14.0246 27.7099 13.0121 26.8648C13.0582 26.8403 13.1381 26.7962 13.1898 26.7642L19.1797 23.3049C19.4862 23.131 19.6742 22.8048 19.6723 22.4522V14.0078L22.2038 15.4696C22.2311 15.4828 22.249 15.5091 22.2527 15.5392V22.5321C22.249 25.6418 19.7306 28.163 16.621 28.1696ZM4.50945 22.9965C3.84863 21.8553 3.61081 20.5176 3.83735 19.2194C3.88154 19.2457 3.95954 19.2937 4.01501 19.3257L10.0049 22.785C10.3086 22.9627 10.6846 22.9627 10.9892 22.785L18.3018 18.5624V21.4859C18.3036 21.5159 18.2895 21.5451 18.266 21.5639L12.2112 25.0599C9.51423 26.6129 6.06995 25.6897 4.51042 22.9965H4.50945ZM2.93302 9.9215C3.59104 8.77841 4.62981 7.90416 5.8669 7.45014C5.8669 7.50182 5.86408 7.59303 5.86408 7.65695V14.5766C5.86218 14.9281 6.05019 15.2543 6.35572 15.4282L13.6683 19.65L11.1368 21.1117C11.1114 21.1287 11.0794 21.1315 11.0512 21.1193L4.99548 17.6204C2.30413 16.0618 1.38101 12.6185 2.93208 9.92243L2.93302 9.9215ZM23.7324 14.7618L16.4198 10.5391L18.9513 9.07829C18.9767 9.06136 19.0087 9.05853 19.0369 9.07077L25.0926 12.5668C27.7887 14.1244 28.7127 17.5734 27.155 20.2695C26.4961 21.4107 25.4583 22.2849 24.2221 22.7399V15.6134C24.2249 15.2619 24.0379 14.9366 23.7333 14.7618H23.7324ZM26.2517 10.9697C26.2075 10.9424 26.1295 10.8954 26.074 10.8634L20.0841 7.40406C19.7804 7.2264 19.4044 7.2264 19.0998 7.40406L11.7873 11.6267V8.70321C11.7854 8.67313 11.7995 8.64398 11.823 8.62518L17.8778 5.13199C20.5748 3.57621 24.0228 4.50217 25.5777 7.20008C26.2347 8.33941 26.4726 9.67333 26.2498 10.9697H26.2517ZM10.411 16.1803L7.87856 14.7185C7.85131 14.7054 7.83347 14.679 7.82971 14.649V7.65599C7.83157 4.54257 10.3575 2.01951 13.4709 2.02139C14.7879 2.02139 16.0626 2.48389 17.075 3.32618C17.0289 3.3506 16.95 3.39479 16.8973 3.42677L10.9074 6.88612C10.6009 7.06002 10.4129 7.38526 10.4148 7.73778L10.411 16.1784V16.1803ZM11.7863 13.2154L15.0436 11.3344L18.3008 13.2145V16.9756L15.0436 18.8556L11.7863 16.9756V13.2154Z" />
           </svg>
         ),
       },
@@ -472,414 +471,6 @@ export const siteConfig = {
             />
           </svg>
         ),
-      },
-      {
-        id: 8,
-        name: 'Company 8',
-        logo: (
-          <svg
-            width="122"
-            height="31"
-            viewBox="0 0 122 31"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="dark:fill-white fill-black"
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M4.65498 5.4192C4.49517 5.59338 4.50576 5.86062 4.67364 6.02715L25.4235 26.6055C25.5914 26.772 25.8609 26.7825 26.0365 26.624C29.079 23.8784 30.9888 19.9197 30.9888 15.5187C30.9888 7.22841 24.2123 0.507812 15.8529 0.507812C11.4152 0.507812 7.42352 2.40182 4.65498 5.4192ZM2.06157 9.32463C1.98489 9.4923 2.02355 9.68889 2.15481 9.81906L21.6 29.1035C21.7313 29.2337 21.9295 29.2721 22.0986 29.196C22.5478 28.994 22.9852 28.7708 23.4097 28.5277C23.662 28.3833 23.7007 28.0419 23.4946 27.8376L3.43132 7.94007C3.22533 7.73577 2.88109 7.77411 2.73544 8.02431C2.49037 8.44527 2.26532 8.87913 2.06157 9.32463ZM0.88189 14.8466C0.790844 14.7563 0.742401 14.6319 0.750973 14.5045C0.791115 13.9077 0.866419 13.3206 0.974847 12.745C1.03986 12.3998 1.46512 12.2801 1.71546 12.5283L18.8682 29.5393C19.1185 29.7875 18.9977 30.2093 18.6497 30.2738C18.0693 30.3813 17.4773 30.456 16.8756 30.4958C16.7471 30.5043 16.6216 30.4562 16.5306 30.3659L0.88189 14.8466ZM1.93451 19.0355C1.622 18.7256 1.11767 18.9926 1.23213 19.416C2.62655 24.5739 6.7222 28.6357 11.9231 30.0186C12.35 30.1321 12.6193 29.632 12.3068 29.322L1.93451 19.0355ZM61.7293 8.76831C62.8144 8.76831 63.6937 7.89291 63.6937 6.81306C63.6937 5.73321 62.8144 4.85781 61.7293 4.85781C60.6445 4.85781 59.7652 5.73321 59.7652 6.81306C59.7652 7.89291 60.6445 8.76831 61.7293 8.76831ZM44.9039 25.8202V4.85898H48.3948V22.7534H57.8071V25.8202H44.9039ZM69.7501 17.2669V25.8202H66.3724V10.9645H69.7077V13.5107L69.7501 13.4826C70.0892 12.6854 70.6358 12.0196 71.3896 11.485C72.1432 10.941 73.1042 10.669 74.2728 10.669C75.3091 10.669 76.2511 10.8988 77.0993 11.3584C77.9472 11.8085 78.6254 12.4697 79.1342 13.3419C79.643 14.2142 79.8974 15.2833 79.8974 16.5494V25.8202H76.5197V17.0137C76.5197 15.8882 76.2181 15.0348 75.6152 14.4533C75.0217 13.8625 74.2256 13.567 73.2267 13.567C72.586 13.567 72.0019 13.6983 71.4743 13.9609C70.9468 14.2235 70.5275 14.6268 70.2165 15.1708C69.9056 15.7147 69.7501 16.4134 69.7501 17.2669ZM100.334 25.567C101.107 25.8952 101.993 26.0594 102.991 26.0594C103.811 26.0594 104.513 25.9562 105.097 25.7498C105.681 25.5341 106.162 25.2481 106.539 24.8917C106.925 24.5353 107.231 24.1461 107.457 23.7241H107.514V25.8202H110.75V15.5928C110.75 14.8706 110.609 14.2095 110.326 13.6092C110.044 13.009 109.634 12.4885 109.097 12.0477C108.569 11.6069 107.928 11.2693 107.174 11.0348C106.421 10.7909 105.573 10.669 104.631 10.669C103.34 10.669 102.223 10.8894 101.281 11.3302C100.348 11.7617 99.6183 12.3431 99.0905 13.0747C98.5629 13.8062 98.2755 14.6315 98.2283 15.5506H101.493C101.531 15.1192 101.682 14.7347 101.945 14.397C102.209 14.0594 102.567 13.7968 103.02 13.6092C103.472 13.4123 103.995 13.3138 104.588 13.3138C105.182 13.3138 105.686 13.4123 106.101 13.6092C106.524 13.8062 106.85 14.0735 107.076 14.4111C107.302 14.7487 107.415 15.1426 107.415 15.5928V15.7054C107.415 16.043 107.297 16.2915 107.062 16.451C106.835 16.6104 106.449 16.7276 105.903 16.8026C105.366 16.8777 104.631 16.9668 103.698 17.0699C102.935 17.1543 102.2 17.281 101.493 17.4498C100.787 17.6186 100.155 17.8671 99.5993 18.1954C99.0529 18.5236 98.6195 18.9597 98.2991 19.5037C97.9788 20.0477 97.8188 20.7464 97.8188 21.5998C97.8188 22.5846 98.0447 23.4099 98.497 24.0758C98.9492 24.7323 99.5618 25.2293 100.334 25.567ZM105.804 23.0769C105.257 23.3677 104.584 23.513 103.783 23.513C102.972 23.513 102.327 23.3442 101.847 23.0066C101.366 22.6596 101.126 22.186 101.126 21.5858C101.126 21.1168 101.258 20.737 101.521 20.4462C101.795 20.1555 102.153 19.9257 102.596 19.7569C103.038 19.5881 103.519 19.4709 104.037 19.4052C104.414 19.349 104.781 19.2927 105.14 19.2364C105.497 19.1708 105.832 19.1098 106.143 19.0535C106.454 18.9879 106.718 18.9222 106.934 18.8566C107.161 18.7909 107.325 18.7206 107.429 18.6455V20.3056C107.429 20.887 107.292 21.4216 107.019 21.9093C106.755 22.3876 106.35 22.7768 105.804 23.0769ZM113.697 25.8202V10.9645H116.948V13.4123H116.99C117.263 12.5682 117.692 11.9258 118.276 11.485C118.87 11.0348 119.647 10.8097 120.608 10.8097C120.844 10.8097 121.056 10.8191 121.244 10.8379C121.442 10.8472 121.607 10.8566 121.739 10.866V13.8906C121.616 13.8718 121.4 13.8484 121.089 13.8203C120.778 13.7921 120.448 13.778 120.099 13.778C119.543 13.778 119.035 13.9046 118.573 14.1579C118.111 14.4111 117.744 14.8003 117.471 15.3255C117.207 15.8414 117.075 16.4932 117.075 17.281V25.8202H113.697ZM60.0335 25.8202V10.9645H63.4112V25.8202H60.0335ZM85.5155 25.159C86.599 25.8249 87.8853 26.1578 89.3739 26.1578C90.5234 26.1578 91.5691 25.9515 92.5114 25.5388C93.4631 25.1168 94.2544 24.54 94.8857 23.8085C95.517 23.0676 95.9269 22.2141 96.1154 21.2481H92.9355C92.7939 21.6889 92.5631 22.0781 92.2428 22.4157C91.9321 22.744 91.541 23.0019 91.07 23.1895C90.5987 23.3771 90.0524 23.4708 89.4304 23.4708C88.5919 23.4708 87.871 23.2833 87.2682 22.9081C86.6747 22.533 86.2224 22.0125 85.9114 21.3466C85.6292 20.7337 85.4749 20.0397 85.4489 19.2645H96.3132V18.3642C96.3132 17.22 96.1435 16.179 95.8044 15.2411C95.4653 14.2939 94.9846 13.4779 94.3627 12.7933C93.741 12.0993 92.9921 11.5647 92.1157 11.1896C91.2488 10.8144 90.2832 10.6268 89.2184 10.6268C87.8335 10.6268 86.6087 10.9598 85.5439 11.6257C84.4791 12.2915 83.6454 13.2107 83.0422 14.383C82.4394 15.5553 82.1378 16.8964 82.1378 18.4064C82.1378 19.907 82.43 21.2434 83.0141 22.4157C83.5982 23.5787 84.4322 24.4931 85.5155 25.159ZM92.6245 15.3255C92.3135 14.6878 91.8707 14.1954 91.2959 13.8484C90.7212 13.5014 90.043 13.3279 89.2607 13.3279C88.4881 13.3279 87.8145 13.5014 87.2397 13.8484C86.6746 14.1954 86.2318 14.6878 85.9114 15.3255C85.6828 15.7874 85.5382 16.3126 85.4777 16.9011H93.058C92.9975 16.3126 92.8529 15.7874 92.6245 15.3255Z"
-            />
-          </svg>
-        ),
-      },
-    ],
-  },
-  featureSection: {
-    title: 'Como o Leaker Flow Funciona',
-    description:
-      'Descubra como o Leaker Flow transforma seus comandos em ação em quatro etapas simples',
-    items: [
-      {
-        id: 1,
-        title: 'Request an Action',
-        content:
-          'Fale ou digite seu comando — deixe o Leaker Flow capturar sua intenção. Seu pedido inicia o processo imediatamente.',
-        image:
-          'https://images.unsplash.com/photo-1720371300677-ba4838fa0678?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      },
-      {
-        id: 2,
-        title: 'AI Understanding & Planning',
-        content:
-          'O Leaker Flow analisa seu pedido, entende o contexto e desenvolve um plano estruturado para concluir a tarefa com eficiência.',
-        image:
-          'https://images.unsplash.com/photo-1686170287433-c95faf6d3608?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwzfHx8ZW58MHx8fHx8fA%3D%3D',
-      },
-      {
-        id: 3,
-        title: 'Autonomous Execution',
-        content:
-          'Com suas capacidades e integrações, o Leaker Flow executa a tarefa de forma autônoma, lidando com as complexidades no caminho.',
-        image:
-          'https://images.unsplash.com/photo-1720378042271-60aff1e1c538?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwxMHx8fGVufDB8fHx8fA%3D%3D',
-      },
-      {
-        id: 4,
-        title: 'Results & Learning',
-        content:
-          'O Leaker Flow entrega resultados e aprende com cada interação, melhorando continuamente seu desempenho para atender melhor às suas necessidades.',
-        image:
-          'https://images.unsplash.com/photo-1666882990322-e7f3b8df4f75?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDF8fHxlbnwwfHx8fHw%3D',
-      },
-    ],
-  },
-  bentoSection: {
-    title: 'Potencialize seu fluxo de trabalho com o Leaker Flow',
-    description:
-      'Deixe o Leaker Flow agir por você com IA avançada, integrações perfeitas e execução autônoma de tarefas.',
-    items: [
-      {
-        id: 1,
-        content: <FirstBentoAnimation />,
-        title: 'Autonomous Task Execution',
-        description:
-          'Experimente automação de verdade com o Leaker Flow. Peça ao seu Agente de IA para concluir tarefas, pesquisar informações e lidar com fluxos de trabalho complexos com supervisão mínima.',
-      },
-      {
-        id: 2,
-        content: <SecondBentoAnimation />,
-        title: 'Seamless Integrations',
-        description:
-          'Conecte o Leaker Flow às suas ferramentas para um fluxo unificado. Aumente a produtividade com sistemas interconectados por IA.',
-      },
-      {
-        id: 3,
-        content: (
-          <ThirdBentoAnimation
-            data={[20, 30, 25, 45, 40, 55, 75]}
-            toolTipValues={[
-              1234, 1678, 2101, 2534, 2967, 3400, 3833, 4266, 4700, 5133,
-            ]}
-          />
-        ),
-        title: 'Intelligent Data Analysis',
-        description:
-          "Transforme dados brutos em insights acionáveis em segundos. Tome melhores decisões com a inteligência adaptativa do Leaker Flow em tempo real.",
-      },
-      {
-        id: 4,
-        content: <FourthBentoAnimation once={false} />,
-        title: 'Complete Customization',
-        description:
-          'Adapte o Leaker Flow às suas necessidades. Sendo open source, você tem controle total sobre capacidades, integrações e implementação.',
-      },
-    ],
-  },
-  benefits: [
-    {
-      id: 1,
-      text: 'Automatize tarefas diárias com os recursos poderosos do Leaker Flow.',
-      image: '/Device-6.png',
-    },
-    {
-      id: 2,
-      text: 'Increase productivity with autonomous task completion.',
-      image: '/Device-7.png',
-    },
-    {
-      id: 3,
-      text: 'Foque no trabalho de maior valor enquanto o Leaker Flow cuida do rotineiro.',
-      image: '/Device-8.png',
-    },
-    {
-      id: 4,
-      text: 'Access cutting-edge AI as an open source, transparent solution.',
-      image: '/Device-1.png',
-    },
-  ],
-  growthSection: {
-    title: 'Open Source & Secure',
-    description:
-      'Where advanced security meets complete transparency—designed to protect your data while providing full access to the code.',
-    items: [
-      {
-        id: 1,
-        content: (
-          <div
-            className="relative flex size-full items-center justify-center overflow-hidden transition-all duration-300 hover:[mask-image:none] hover:[webkit-mask-image:none]"
-            style={{
-              WebkitMaskImage: `url("data:image/svg+xml,%3Csvg width='265' height='268' viewBox='0 0 265 268' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fillRule='evenodd' clipRule='evenodd' d='M121.384 4.5393C124.406 1.99342 128.319 0.585938 132.374 0.585938C136.429 0.585938 140.342 1.99342 143.365 4.5393C173.074 29.6304 210.174 45.6338 249.754 50.4314C253.64 50.9018 257.221 52.6601 259.855 55.3912C262.489 58.1223 264.005 61.6477 264.13 65.3354C265.616 106.338 254.748 146.9 232.782 182.329C210.816 217.759 178.649 246.61 140.002 265.547C137.645 266.701 135.028 267.301 132.371 267.298C129.715 267.294 127.1 266.686 124.747 265.526C86.0991 246.59 53.9325 217.739 31.9665 182.309C10.0005 146.879 -0.867679 106.317 0.618784 65.3147C0.748654 61.6306 2.26627 58.1102 4.9001 55.3833C7.53394 52.6565 11.1121 50.9012 14.9945 50.4314C54.572 45.6396 91.6716 29.6435 121.384 4.56V4.5393Z' fill='black'/%3E%3C/svg%3E")`,
-              maskImage: `url("data:image/svg+xml,%3Csvg width='265' height='268' viewBox='0 0 265 268' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fillRule='evenodd' clipRule='evenodd' d='M121.384 4.5393C124.406 1.99342 128.319 0.585938 132.374 0.585938C136.429 0.585938 140.342 1.99342 143.365 4.5393C173.074 29.6304 210.174 45.6338 249.754 50.4314C253.64 50.9018 257.221 52.6601 259.855 55.3912C262.489 58.1223 264.005 61.6477 264.13 65.3354C265.616 106.338 254.748 146.9 232.782 182.329C210.816 217.759 178.649 246.61 140.002 265.547C137.645 266.701 135.028 267.301 132.371 267.298C129.715 267.294 127.1 266.686 124.747 265.526C86.0991 246.59 53.9325 217.739 31.9665 182.309C10.0005 146.879 -0.867679 106.317 0.618784 65.3147C0.748654 61.6306 2.26627 58.1102 4.9001 55.3833C7.53394 52.6565 11.1121 50.9012 14.9945 50.4314C54.572 45.6396 91.6716 29.6435 121.384 4.56V4.5393Z' fill='black'/%3E%3C/svg%3E")`,
-              WebkitMaskSize: 'contain',
-              maskSize: 'contain',
-              WebkitMaskRepeat: 'no-repeat',
-              maskPosition: 'center',
-            }}
-          >
-            <div className="absolute top-[55%] md:top-[58%] left-[55%] md:left-[57%] -translate-x-1/2 -translate-y-1/2  size-full z-10">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="227"
-                height="244"
-                viewBox="0 0 227 244"
-                fill="none"
-                className="size-[90%] md:size-[85%] object-contain fill-background"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M104.06 3.61671C106.656 1.28763 110.017 0 113.5 0C116.983 0 120.344 1.28763 122.94 3.61671C148.459 26.5711 180.325 41.2118 214.322 45.6008C217.66 46.0312 220.736 47.6398 222.999 50.1383C225.262 52.6369 226.563 55.862 226.67 59.2357C227.947 96.7468 218.612 133.854 199.744 166.267C180.877 198.68 153.248 225.074 120.052 242.398C118.028 243.454 115.779 244.003 113.498 244C111.216 243.997 108.969 243.441 106.948 242.379C73.7524 225.055 46.1231 198.661 27.2556 166.248C8.38807 133.835 -0.947042 96.7279 0.329744 59.2168C0.441295 55.8464 1.74484 52.6258 4.00715 50.1311C6.26946 47.6365 9.34293 46.0306 12.6777 45.6008C46.6725 41.2171 78.5389 26.5832 104.06 3.63565V3.61671Z"
-                />
-              </svg>
-            </div>
-            <div className="absolute top-[58%] md:top-[60%] left-1/2 -translate-x-1/2 -translate-y-1/2  size-full z-20">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="245"
-                height="282"
-                viewBox="0 0 245 282"
-                className="size-full object-contain fill-accent"
-              >
-                <g filter="url(#filter0_dddd_2_33)">
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M113.664 7.33065C116.025 5.21236 119.082 4.04126 122.25 4.04126C125.418 4.04126 128.475 5.21236 130.836 7.33065C154.045 28.2076 183.028 41.5233 213.948 45.5151C216.984 45.9065 219.781 47.3695 221.839 49.6419C223.897 51.9144 225.081 54.8476 225.178 57.916C226.339 92.0322 217.849 125.781 200.689 155.261C183.529 184.74 158.4 208.746 128.209 224.501C126.368 225.462 124.323 225.962 122.248 225.959C120.173 225.956 118.13 225.45 116.291 224.484C86.0997 208.728 60.971 184.723 43.811 155.244C26.6511 125.764 18.1608 92.015 19.322 57.8988C19.4235 54.8334 20.6091 51.9043 22.6666 49.6354C24.7242 47.3665 27.5195 45.906 30.5524 45.5151C61.4706 41.5281 90.4531 28.2186 113.664 7.34787V7.33065Z"
-                  />
-                </g>
-                <defs>
-                  <filter
-                    id="filter0_dddd_2_33"
-                    x="0.217041"
-                    y="0.0412598"
-                    width="244.066"
-                    height="292.917"
-                    filterUnits="userSpaceOnUse"
-                    colorInterpolationFilters="sRGB"
-                  >
-                    <feFlood floodOpacity="0" result="BackgroundImageFix" />
-                    <feColorMatrix
-                      in="SourceAlpha"
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
-                      result="hardAlpha"
-                    />
-                    <feOffset dy="3" />
-                    <feGaussianBlur stdDeviation="3.5" />
-                    <feColorMatrix
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.04 0"
-                    />
-                    <feBlend
-                      mode="normal"
-                      in2="BackgroundImageFix"
-                      result="effect1_dropShadow_2_33"
-                    />
-                    <feColorMatrix
-                      in="SourceAlpha"
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
-                      result="hardAlpha"
-                    />
-                    <feOffset dy="12" />
-                    <feGaussianBlur stdDeviation="6" />
-                    <feColorMatrix
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.04 0"
-                    />
-                    <feBlend
-                      mode="normal"
-                      in2="effect1_dropShadow_2_33"
-                      result="effect2_dropShadow_2_33"
-                    />
-                    <feColorMatrix
-                      in="SourceAlpha"
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
-                      result="hardAlpha"
-                    />
-                    <feOffset dy="27" />
-                    <feGaussianBlur stdDeviation="8" />
-                    <feColorMatrix
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.02 0"
-                    />
-                    <feBlend
-                      mode="normal"
-                      in2="effect2_dropShadow_2_33"
-                      result="effect3_dropShadow_2_33"
-                    />
-                    <feColorMatrix
-                      in="SourceAlpha"
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
-                      result="hardAlpha"
-                    />
-                    <feOffset dy="48" />
-                    <feGaussianBlur stdDeviation="9.5" />
-                    <feColorMatrix
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.01 0"
-                    />
-                    <feBlend
-                      mode="normal"
-                      in2="effect3_dropShadow_2_33"
-                      result="effect4_dropShadow_2_33"
-                    />
-                    <feBlend
-                      mode="normal"
-                      in="SourceGraphic"
-                      in2="effect4_dropShadow_2_33"
-                      result="shape"
-                    />
-                  </filter>
-                </defs>
-              </svg>
-            </div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="81"
-                height="80"
-                viewBox="0 0 81 80"
-                className="fill-background"
-              >
-                <g filter="url(#filter0_iiii_2_34)">
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M20.5 36V28C20.5 22.6957 22.6071 17.6086 26.3579 13.8579C30.1086 10.1071 35.1957 8 40.5 8C45.8043 8 50.8914 10.1071 54.6421 13.8579C58.3929 17.6086 60.5 22.6957 60.5 28V36C62.6217 36 64.6566 36.8429 66.1569 38.3431C67.6571 39.8434 68.5 41.8783 68.5 44V64C68.5 66.1217 67.6571 68.1566 66.1569 69.6569C64.6566 71.1571 62.6217 72 60.5 72H20.5C18.3783 72 16.3434 71.1571 14.8431 69.6569C13.3429 68.1566 12.5 66.1217 12.5 64V44C12.5 41.8783 13.3429 39.8434 14.8431 38.3431C16.3434 36.8429 18.3783 36 20.5 36ZM52.5 28V36H28.5V28C28.5 24.8174 29.7643 21.7652 32.0147 19.5147C34.2652 17.2643 37.3174 16 40.5 16C43.6826 16 46.7348 17.2643 48.9853 19.5147C51.2357 21.7652 52.5 24.8174 52.5 28Z"
-                  />
-                </g>
-                <defs>
-                  <filter
-                    id="filter0_iiii_2_34"
-                    x="12.5"
-                    y="8"
-                    width="56"
-                    height="70"
-                    filterUnits="userSpaceOnUse"
-                    colorInterpolationFilters="sRGB"
-                  >
-                    <feFlood floodOpacity="0" result="BackgroundImageFix" />
-                    <feBlend
-                      mode="normal"
-                      in="SourceGraphic"
-                      in2="BackgroundImageFix"
-                      result="shape"
-                    />
-                    <feColorMatrix
-                      in="SourceAlpha"
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
-                      result="hardAlpha"
-                    />
-                    <feOffset dy="1" />
-                    <feGaussianBlur stdDeviation="1" />
-                    <feComposite
-                      in2="hardAlpha"
-                      operator="arithmetic"
-                      k2="-1"
-                      k3="1"
-                    />
-                    <feColorMatrix
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"
-                    />
-                    <feBlend
-                      mode="normal"
-                      in2="shape"
-                      result="effect1_innerShadow_2_34"
-                    />
-                    <feColorMatrix
-                      in="SourceAlpha"
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
-                      result="hardAlpha"
-                    />
-                    <feOffset dy="3" />
-                    <feGaussianBlur stdDeviation="1.5" />
-                    <feComposite
-                      in2="hardAlpha"
-                      operator="arithmetic"
-                      k2="-1"
-                      k3="1"
-                    />
-                    <feColorMatrix
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.09 0"
-                    />
-                    <feBlend
-                      mode="normal"
-                      in2="effect1_innerShadow_2_34"
-                      result="effect2_innerShadow_2_34"
-                    />
-                    <feColorMatrix
-                      in="SourceAlpha"
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
-                      result="hardAlpha"
-                    />
-                    <feOffset dy="8" />
-                    <feGaussianBlur stdDeviation="2.5" />
-                    <feComposite
-                      in2="hardAlpha"
-                      operator="arithmetic"
-                      k2="-1"
-                      k3="1"
-                    />
-                    <feColorMatrix
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0"
-                    />
-                    <feBlend
-                      mode="normal"
-                      in2="effect2_innerShadow_2_34"
-                      result="effect3_innerShadow_2_34"
-                    />
-                    <feColorMatrix
-                      in="SourceAlpha"
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
-                      result="hardAlpha"
-                    />
-                    <feOffset dy="14" />
-                    <feGaussianBlur stdDeviation="3" />
-                    <feComposite
-                      in2="hardAlpha"
-                      operator="arithmetic"
-                      k2="-1"
-                      k3="1"
-                    />
-                    <feColorMatrix
-                      type="matrix"
-                      values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.01 0"
-                    />
-                    <feBlend
-                      mode="normal"
-                      in2="effect3_innerShadow_2_34"
-                      result="effect4_innerShadow_2_34"
-                    />
-                  </filter>
-                </defs>
-              </svg>
-            </div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="size-full"
-            >
-              <FlickeringGrid
-                className="size-full"
-                gridGap={4}
-                squareSize={2}
-                maxOpacity={0.5}
-              />
-            </motion.div>
-          </div>
-        ),
 
         title: 'Open Source Security',
         description:
@@ -895,13 +486,13 @@ export const siteConfig = {
 
         title: 'Community Powered',
         description:
-          'Junte-se a uma comunidade ativa de devs e usuários que aprimoram e expandem as capacidades do Leaker Flow.',
+          "Join an active community of developers and users who enhance and expand Leaker Flow's capabilities.",
       },
     ],
   },
   quoteSection: {
     quote:
-      'O Leaker Flow transformou nossa abordagem às tarefas diárias. O nível de automação, somado ao caráter open source, torna-o valioso para toda a organização.',
+      'Leaker Flow transformed our approach to daily tasks. The level of automation, combined with its open source nature, makes it valuable for the entire organization.',
     author: {
       name: 'Alex Johnson',
       role: 'CTO, Innovatech',
@@ -909,9 +500,9 @@ export const siteConfig = {
     },
   },
   pricing: {
-    title: 'Open Source e Gratuito para Sempre',
+    title: 'Open Source & Free Forever',
     description:
-      'Leaker Flow é 100% open source e gratuito. Sem taxas ocultas ou recursos bloqueados.',
+      'Leaker Flow is 100% open source and free. No hidden fees or locked features.',
     pricingItems: [
       {
         name: 'Community',
@@ -925,8 +516,8 @@ export const siteConfig = {
           'Full source code access',
           'Community support',
         ],
-        description: 'Perfeito para iniciantes, usuários e devs',
-        buttonText: 'Usar Leaker Flow',
+        description: 'Perfect for beginners, users, and devs',
+        buttonText: 'Use Leaker Flow',
         buttonColor: 'bg-accent text-primary',
         isPopular: false,
       },
@@ -946,8 +537,8 @@ export const siteConfig = {
           'Full customization',
           'Community support',
         ],
-        description: 'Ideal para organizações com requisitos específicos',
-        buttonText: 'Ver Docs',
+        description: 'Ideal for organizations with specific requirements',
+        buttonText: 'View Docs',
         buttonColor: 'bg-secondary text-white',
         isPopular: true,
       },
@@ -964,8 +555,8 @@ export const siteConfig = {
           'Dedicated hosting',
           'SLA guarantees',
         ],
-        description: 'Para equipes grandes que precisam de implementações customizadas',
-        buttonText: 'Fale Conosco',
+        description: 'For large teams that need custom deployments',
+        buttonText: 'Contact Us',
         buttonColor: 'bg-primary text-primary-foreground',
         isPopular: false,
       },
@@ -1176,7 +767,7 @@ export const siteConfig = {
   faqSection: {
     title: 'Frequently Asked Questions',
     description:
-      'Respostas para perguntas comuns sobre o Leaker Flow e suas capacidades. Se tiver outras dúvidas, fale com a gente.',
+      'Answers to common questions about Leaker Flow and its capabilities. If you have other questions, contact us.',
     faQitems: [
       {
         id: 1,
@@ -1186,45 +777,45 @@ export const siteConfig = {
       },
       {
         id: 2,
-        question: 'Como o Leaker Flow funciona?',
+        question: 'How does Leaker Flow work?',
         answer:
-          'O Leaker Flow analisa seus requisitos, entende o contexto e executa tarefas com base nas suas instruções. Integra com seu fluxo de trabalho, aprende com feedback e melhora continuamente o desempenho.',
+          'Leaker Flow analyzes your requirements, understands the context, and executes tasks based on your instructions. It integrates with your workflow, learns from feedback, and continuously improves performance.',
       },
       {
         id: 3,
-        question: 'O Leaker Flow é realmente gratuito?',
+        question: 'Is Leaker Flow really free?',
         answer:
-          'Sim, o Leaker Flow é totalmente gratuito e open source. Acreditamos na democratização da tecnologia de IA e em torná-la acessível a todos.',
+          'Yes, Leaker Flow is completely free and open source. We believe in democratizing AI technology and making it accessible to everyone.',
       },
       {
         id: 4,
-        question: 'Posso integrar o Leaker Flow às minhas ferramentas?',
+        question: 'Can I integrate Leaker Flow with my tools?',
         answer:
-          'Sim, o Leaker Flow é compatível com ferramentas e plataformas populares. Oferecemos APIs e integrações para conexão fluida com seu fluxo de trabalho.',
+          'Yes, Leaker Flow supports popular tools and platforms. We offer APIs and integrations for a smooth connection to your workflow.',
       },
       {
         id: 5,
-        question: 'Como posso contribuir com o Leaker Flow?',
+        question: 'How can I contribute to Leaker Flow?',
         answer:
-          'Contribua enviando PRs no GitHub, reportando bugs, sugerindo features ou ajudando na documentação. Entre no nosso Discord para se conectar com a comunidade.',
+          'Contribute by submitting PRs on GitHub, reporting bugs, suggesting features, or helping with documentation. Join our Discord to connect with the community.',
       },
       {
         id: 6,
-        question: 'Como o Leaker Flow me poupa tempo?',
+        question: 'How does Leaker Flow save me time?',
         answer:
-          'O Leaker Flow automatiza tarefas repetitivas, simplifica fluxos e oferece soluções rápidas para desafios comuns, liberando tempo para atividades mais estratégicas.',
+          'Leaker Flow automates repetitive tasks, streamlines workflows, and offers quick solutions to common challenges, freeing up time for more strategic activities.',
       },
     ],
   },
   ctaSection: {
     id: 'cta',
-    title: 'Comece a usar o Leaker Flow hoje',
+    title: 'Start using Leaker Flow today',
     backgroundImage: '/holo.png',
     button: {
       text: 'Get Started for free',
       href: '/auth',
     },
-    subtext: 'O Agente de IA generalista que age por você',
+    subtext: 'The generalist AI agent that acts on your behalf',
   },
   footerLinks: [
     {
@@ -1308,7 +899,7 @@ export const siteConfig = {
         </svg>
       ),
       image:
-        'https://images.unsplash.com/photo-1576091160550-2173dba999ef?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2400&q=80',
+        'https://images.unsplash.com/photo-1576091160550-2173dba999ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       url: 'https://suna.so/share/2fbf0552-87d6-4d12-be25-d54f435bc493',
     },
     {
