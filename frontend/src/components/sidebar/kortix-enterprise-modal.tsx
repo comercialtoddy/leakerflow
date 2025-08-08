@@ -44,7 +44,7 @@ export function KortixProcessModal() {
                   src={
                     isDarkMode ? '/kortix-logo-white.svg' : '/kortix-logo.svg'
                   }
-                  alt="Kortix Logo"
+                  alt="Leaker Flow Logo"
                   width={60}
                   height={21}
                   className="h-6 w-auto"
@@ -100,7 +100,7 @@ export function KortixProcessModal() {
             <div className="h-full overflow-auto">
               <Cal
                 namespace="enterprise-demo"
-                calLink="team/kortix/enterprise-demo"
+                calLink="team/leakerflow/enterprise-demo"
                 style={{ width: '100%', height: '100%' }}
                 config={{
                   layout: 'month_view',

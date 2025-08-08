@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     template: `%s - ${siteConfig.name}`,
   },
   description:
-    'Suna is a fully open source AI assistant that helps you accomplish real-world tasks with ease. Through natural conversation, Suna becomes your digital companion for research, data analysis, and everyday challenges.',
+    'Leaker Flow é um assistente de IA open source que ajuda você a executar tarefas do mundo real com facilidade. Através de conversas naturais, o Leaker Flow torna-se seu companheiro digital para pesquisa, análise de dados e desafios do dia a dia.',
   keywords: [
     'AI',
     'artificial intelligence',
@@ -43,13 +43,11 @@ export const metadata: Metadata = {
     'research',
     'data analysis',
   ],
-  authors: [{ name: 'Kortix Team', url: 'https://suna.so' }],
-  creator:
-    'Kortix Team - Adam Cohen Hillel, Marko Kraemer, Domenico Gagliardi, and Quoc Dat Le',
-  publisher:
-    'Kortix Team - Adam Cohen Hillel, Marko Kraemer, Domenico Gagliardi, and Quoc Dat Le',
+  authors: [{ name: 'Comercial Toddy', url: siteConfig.url }],
+  creator: 'Comercial Toddy',
+  publisher: 'Comercial Toddy',
   category: 'Technology',
-  applicationName: 'Suna',
+  applicationName: 'Leaker Flow',
   formatDetection: {
     telephone: false,
     email: false,
@@ -64,17 +62,17 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: 'Suna - Open Source Generalist AI Agent',
+    title: 'Leaker Flow - Open Source Generalist AI Agent',
     description:
-      'Suna is a fully open source AI assistant that helps you accomplish real-world tasks with ease through natural conversation.',
+      'Leaker Flow é um assistente de IA open source que ajuda você a executar tarefas do mundo real com facilidade por meio de conversas naturais.',
     url: siteConfig.url,
-    siteName: 'Suna',
+    siteName: 'Leaker Flow',
     images: [
       {
         url: '/banner.png',
         width: 1200,
         height: 630,
-        alt: 'Suna - Open Source Generalist AI Agent',
+        alt: 'Leaker Flow - Open Source Generalist AI Agent',
         type: 'image/png',
       },
     ],
@@ -83,17 +81,17 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Suna - Open Source Generalist AI Agent',
+    title: 'Leaker Flow - Open Source Generalist AI Agent',
     description:
-      'Suna is a fully open source AI assistant that helps you accomplish real-world tasks with ease through natural conversation.',
-    creator: '@kortixai',
-    site: '@kortixai',
+      'Leaker Flow é um assistente de IA open source que ajuda você a executar tarefas do mundo real com facilidade por meio de conversas naturais.',
+    creator: '@leakerflow',
+    site: '@leakerflow',
     images: [
       {
         url: '/banner.png',
         width: 1200,
         height: 630,
-        alt: 'Suna - Open Source Generalist AI Agent',
+        alt: 'Leaker Flow - Open Source Generalist AI Agent',
       },
     ],
   },

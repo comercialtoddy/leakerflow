@@ -58,17 +58,17 @@ export interface PricingTier {
 }
 
 export const siteConfig = {
-  name: 'Kortix Suna',
-  description: 'The Generalist AI Agent that can act on your behalf.',
+  name: 'Leaker Flow',
+  description: 'O Agente de IA generalista que age por você.',
   cta: 'Start Free',
-  url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  url: process.env.NEXT_PUBLIC_APP_URL || 'https://leakerflow.com',
   keywords: ['AI Agent', 'Generalist AI', 'Open Source AI', 'Autonomous Agent'],
   links: {
-    email: 'support@kortix.ai',
-    twitter: 'https://x.com/kortixai',
-    discord: 'https://discord.gg/kortixai',
-    github: 'https://github.com/Kortix-ai/Suna',
-    instagram: 'https://instagram.com/kortixai',
+    email: 'support@leakerflow.com',
+    twitter: 'https://x.com/leakerflow',
+    discord: 'https://discord.gg/leakerflow',
+    github: 'https://github.com/leakerflow/leakerflow',
+    instagram: 'https://instagram.com/leakerflow',
   },
   nav: {
     links: [
@@ -106,11 +106,11 @@ export const siteConfig = {
       </svg>
     ),
     badge: '100% OPEN SOURCE',
-    githubUrl: 'https://github.com/kortix-ai/suna',
-    title: 'Suna, the AI Employee.',
+    githubUrl: 'https://github.com/leakerflow/leakerflow',
+    title: 'Leaker Flow, the AI Employee.',
     description:
-      'Suna by Kortix – is a generalist AI Agent that acts on your behalf.',
-    inputPlaceholder: 'Ask Suna to...',
+      'Leaker Flow é um agente de IA generalista que age por você.',
+    inputPlaceholder: 'Peça ao Leaker Flow para...',
   },
   cloudPricingItems: [
     {
@@ -496,15 +496,15 @@ export const siteConfig = {
     ],
   },
   featureSection: {
-    title: 'How Kortix Suna Works',
+    title: 'Como o Leaker Flow Funciona',
     description:
-      'Discover how Kortix Suna transforms your commands into action in four easy steps',
+      'Descubra como o Leaker Flow transforma seus comandos em ação em quatro etapas simples',
     items: [
       {
         id: 1,
         title: 'Request an Action',
         content:
-          'Speak or type your command—let Kortix Suna capture your intent. Your request instantly sets the process in motion.',
+          'Fale ou digite seu comando — deixe o Leaker Flow capturar sua intenção. Seu pedido inicia o processo imediatamente.',
         image:
           'https://images.unsplash.com/photo-1720371300677-ba4838fa0678?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       },
@@ -512,7 +512,7 @@ export const siteConfig = {
         id: 2,
         title: 'AI Understanding & Planning',
         content:
-          'Suna analyzes your request, understands the context, and develops a structured plan to complete the task efficiently.',
+          'O Leaker Flow analisa seu pedido, entende o contexto e desenvolve um plano estruturado para concluir a tarefa com eficiência.',
         image:
           'https://images.unsplash.com/photo-1686170287433-c95faf6d3608?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwzfHx8ZW58MHx8fHx8fA%3D%3D',
       },
@@ -520,7 +520,7 @@ export const siteConfig = {
         id: 3,
         title: 'Autonomous Execution',
         content:
-          'Using its capabilities and integrations, Suna executes the task independently, handling any complexities along the way.',
+          'Com suas capacidades e integrações, o Leaker Flow executa a tarefa de forma autônoma, lidando com as complexidades no caminho.',
         image:
           'https://images.unsplash.com/photo-1720378042271-60aff1e1c538?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwxMHx8fGVufDB8fHx8fA%3D%3D',
       },
@@ -528,30 +528,30 @@ export const siteConfig = {
         id: 4,
         title: 'Results & Learning',
         content:
-          'Suna delivers results and learns from each interaction, continuously improving its performance to better serve your needs.',
+          'O Leaker Flow entrega resultados e aprende com cada interação, melhorando continuamente seu desempenho para atender melhor às suas necessidades.',
         image:
           'https://images.unsplash.com/photo-1666882990322-e7f3b8df4f75?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDF8fHxlbnwwfHx8fHw%3D',
       },
     ],
   },
   bentoSection: {
-    title: 'Empower Your Workflow with Kortix Suna',
+    title: 'Potencialize seu fluxo de trabalho com o Leaker Flow',
     description:
-      'Let Kortix Suna act on your behalf with advanced AI capabilities, seamless integrations, and autonomous task execution.',
+      'Deixe o Leaker Flow agir por você com IA avançada, integrações perfeitas e execução autônoma de tarefas.',
     items: [
       {
         id: 1,
         content: <FirstBentoAnimation />,
         title: 'Autonomous Task Execution',
         description:
-          'Experience true automation with Suna. Ask your AI Agent to complete tasks, research information, and handle complex workflows with minimal supervision.',
+          'Experimente automação de verdade com o Leaker Flow. Peça ao seu Agente de IA para concluir tarefas, pesquisar informações e lidar com fluxos de trabalho complexos com supervisão mínima.',
       },
       {
         id: 2,
         content: <SecondBentoAnimation />,
         title: 'Seamless Integrations',
         description:
-          'Connect Suna to your existing tools for a unified workflow. Boost productivity through AI-powered interconnected systems.',
+          'Conecte o Leaker Flow às suas ferramentas para um fluxo unificado. Aumente a produtividade com sistemas interconectados por IA.',
       },
       {
         id: 3,
@@ -565,21 +565,21 @@ export const siteConfig = {
         ),
         title: 'Intelligent Data Analysis',
         description:
-          "Transform raw data into actionable insights in seconds. Make better decisions with Suna's real-time, adaptive intelligence.",
+          "Transforme dados brutos em insights acionáveis em segundos. Tome melhores decisões com a inteligência adaptativa do Leaker Flow em tempo real.",
       },
       {
         id: 4,
         content: <FourthBentoAnimation once={false} />,
         title: 'Complete Customization',
         description:
-          'Tailor Suna to your specific needs. As an open source solution, you have full control over its capabilities, integrations, and implementation.',
+          'Adapte o Leaker Flow às suas necessidades. Sendo open source, você tem controle total sobre capacidades, integrações e implementação.',
       },
     ],
   },
   benefits: [
     {
       id: 1,
-      text: "Automate everyday tasks with Suna's powerful AI capabilities.",
+      text: 'Automatize tarefas diárias com os recursos poderosos do Leaker Flow.',
       image: '/Device-6.png',
     },
     {
@@ -589,7 +589,7 @@ export const siteConfig = {
     },
     {
       id: 3,
-      text: 'Improve focus on high-value work as Suna handles the routine.',
+      text: 'Foque no trabalho de maior valor enquanto o Leaker Flow cuida do rotineiro.',
       image: '/Device-8.png',
     },
     {
@@ -895,13 +895,13 @@ export const siteConfig = {
 
         title: 'Community Powered',
         description:
-          "Join a thriving community of developers and users continuously enhancing and expanding Suna's capabilities.",
+          'Junte-se a uma comunidade ativa de devs e usuários que aprimoram e expandem as capacidades do Leaker Flow.',
       },
     ],
   },
   quoteSection: {
     quote:
-      'Kortix Suna has transformed how we approach everyday tasks. The level of automation it provides, combined with its open source nature, makes it an invaluable tool for our entire organization.',
+      'O Leaker Flow transformou nossa abordagem às tarefas diárias. O nível de automação, somado ao caráter open source, torna-o valioso para toda a organização.',
     author: {
       name: 'Alex Johnson',
       role: 'CTO, Innovatech',
@@ -909,9 +909,9 @@ export const siteConfig = {
     },
   },
   pricing: {
-    title: 'Open Source & Free Forever',
+    title: 'Open Source e Gratuito para Sempre',
     description:
-      'Kortix Suna is 100% open source and free to use. No hidden fees, no premium features locked behind paywalls.',
+      'Leaker Flow é 100% open source e gratuito. Sem taxas ocultas ou recursos bloqueados.',
     pricingItems: [
       {
         name: 'Community',
@@ -925,8 +925,8 @@ export const siteConfig = {
           'Full source code access',
           'Community support',
         ],
-        description: 'Perfect for individual users and developers',
-        buttonText: 'Hire Suna',
+        description: 'Perfeito para iniciantes, usuários e devs',
+        buttonText: 'Usar Leaker Flow',
         buttonColor: 'bg-accent text-primary',
         isPopular: false,
       },
@@ -946,8 +946,8 @@ export const siteConfig = {
           'Full customization',
           'Community support',
         ],
-        description: 'Ideal for organizations with specific requirements',
-        buttonText: 'View Docs',
+        description: 'Ideal para organizações com requisitos específicos',
+        buttonText: 'Ver Docs',
         buttonColor: 'bg-secondary text-white',
         isPopular: true,
       },
@@ -964,8 +964,8 @@ export const siteConfig = {
           'Dedicated hosting',
           'SLA guarantees',
         ],
-        description: 'For large teams needing custom implementations',
-        buttonText: 'Contact Us',
+        description: 'Para equipes grandes que precisam de implementações customizadas',
+        buttonText: 'Fale Conosco',
         buttonColor: 'bg-primary text-primary-foreground',
         isPopular: false,
       },
@@ -1176,7 +1176,7 @@ export const siteConfig = {
   faqSection: {
     title: 'Frequently Asked Questions',
     description:
-      "Answers to common questions about Kortix Suna and its capabilities. If you have any other questions, please don't hesitate to contact us.",
+      'Respostas para perguntas comuns sobre o Leaker Flow e suas capacidades. Se tiver outras dúvidas, fale com a gente.',
     faQitems: [
       {
         id: 1,
@@ -1186,53 +1186,53 @@ export const siteConfig = {
       },
       {
         id: 2,
-        question: 'How does Kortix Suna work?',
+        question: 'Como o Leaker Flow funciona?',
         answer:
-          'Kortix Suna works by analyzing your requirements, leveraging advanced AI algorithms to understand context, and executing tasks based on your instructions. It can integrate with your workflow, learn from feedback, and continuously improve its performance.',
+          'O Leaker Flow analisa seus requisitos, entende o contexto e executa tarefas com base nas suas instruções. Integra com seu fluxo de trabalho, aprende com feedback e melhora continuamente o desempenho.',
       },
       {
         id: 3,
-        question: 'Is Kortix Suna really free?',
+        question: 'O Leaker Flow é realmente gratuito?',
         answer:
-          'Yes, Kortix Suna is completely free and open source. We believe in democratizing AI technology and making it accessible to everyone. You can use it, modify it, and contribute to its development without any cost.',
+          'Sim, o Leaker Flow é totalmente gratuito e open source. Acreditamos na democratização da tecnologia de IA e em torná-la acessível a todos.',
       },
       {
         id: 4,
-        question: 'Can I integrate Suna with my existing tools?',
+        question: 'Posso integrar o Leaker Flow às minhas ferramentas?',
         answer:
-          'Yes, Kortix Suna is designed to be highly compatible with popular tools and platforms. We offer APIs and pre-built integrations for seamless connection with your existing workflow tools and systems.',
+          'Sim, o Leaker Flow é compatível com ferramentas e plataformas populares. Oferecemos APIs e integrações para conexão fluida com seu fluxo de trabalho.',
       },
       {
         id: 5,
-        question: 'How can I contribute to Kortix Suna?',
+        question: 'Como posso contribuir com o Leaker Flow?',
         answer:
-          'You can contribute to Kortix Suna by submitting pull requests on GitHub, reporting bugs, suggesting new features, or helping with documentation. Join our Discord community to connect with other contributors and Hire Suna.',
+          'Contribua enviando PRs no GitHub, reportando bugs, sugerindo features ou ajudando na documentação. Entre no nosso Discord para se conectar com a comunidade.',
       },
       {
         id: 6,
-        question: 'How does Kortix Suna save me time?',
+        question: 'Como o Leaker Flow me poupa tempo?',
         answer:
-          'Kortix Suna automates repetitive tasks, streamlines workflows, and provides quick solutions to common challenges. This automation and efficiency can save hours of manual work, allowing you to focus on more strategic activities.',
+          'O Leaker Flow automatiza tarefas repetitivas, simplifica fluxos e oferece soluções rápidas para desafios comuns, liberando tempo para atividades mais estratégicas.',
       },
     ],
   },
   ctaSection: {
     id: 'cta',
-    title: 'Start Using Kortix Suna Today',
+    title: 'Comece a usar o Leaker Flow hoje',
     backgroundImage: '/holo.png',
     button: {
       text: 'Get Started for free',
       href: '/auth',
     },
-    subtext: 'The generalist AI Agent that acts on your behalf',
+    subtext: 'O Agente de IA generalista que age por você',
   },
   footerLinks: [
     {
-      title: 'Kortix',
+      title: 'Leaker Flow',
       links: [
-        { id: 1, title: 'About', url: 'https://kortix.ai' },
-        { id: 3, title: 'Contact', url: 'mailto:hey@kortix.ai' },
-        { id: 4, title: 'Careers', url: 'https://kortix.ai/careers' },
+        { id: 1, title: 'About', url: 'https://leakerflow.app' },
+        { id: 3, title: 'Contact', url: 'mailto:hello@leakerflow.app' },
+        { id: 4, title: 'Careers', url: '#' },
       ],
     },
     {
@@ -1241,10 +1241,10 @@ export const siteConfig = {
         {
           id: 5,
           title: 'Documentation',
-          url: 'https://github.com/Kortix-ai/Suna',
+          url: 'https://github.com/leakerflow/leakerflow',
         },
         { id: 7, title: 'Discord', url: 'https://discord.gg/Py6pCBUUPw' },
-        { id: 8, title: 'GitHub', url: 'https://github.com/Kortix-ai/Suna' },
+        { id: 8, title: 'GitHub', url: 'https://github.com/leakerflow/leakerflow' },
       ],
     },
     {
@@ -1253,17 +1253,17 @@ export const siteConfig = {
         {
           id: 9,
           title: 'Privacy Policy',
-          url: 'https://suna.so/legal?tab=privacy',
+          url: '#',
         },
         {
           id: 10,
           title: 'Terms of Service',
-          url: 'https://suna.so/legal?tab=terms',
+          url: '#',
         },
         {
           id: 11,
           title: 'License Apache 2.0',
-          url: 'https://github.com/Kortix-ai/Suna/blob/main/LICENSE',
+          url: 'https://github.com/leakerflow/leakerflow/blob/main/LICENSE',
         },
       ],
     },

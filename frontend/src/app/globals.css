@@ -238,6 +238,11 @@
 }
 
 :root {
+  /* Leaker Flow brand gradient tokens */
+  --brand-from: #8B5CF6; /* purple */
+  --brand-via: #3B82F6;  /* blue */
+  --brand-to:  #22D3EE;  /* cyan */
+  --brand-gradient: linear-gradient(45deg, var(--brand-from) 0%, var(--brand-via) 50%, var(--brand-to) 100%);
   --background: oklch(0.9741 0 129.63);
   --foreground: oklch(0.2277 0.0034 67.65);
   --card: oklch(98.46% 0.002 247.84);
@@ -274,6 +279,11 @@
 }
 
 .dark {
+  /* Keep same gradient in dark; tweak here if needed */
+  --brand-from: #8B5CF6;
+  --brand-via: #3B82F6;
+  --brand-to:  #22D3EE;
+  --brand-gradient: linear-gradient(45deg, var(--brand-from) 0%, var(--brand-via) 50%, var(--brand-to) 100%);
   --background: oklch(0.185 0.005 285.823);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.2 0.005 285.823);
@@ -559,6 +569,33 @@
     }
   }
 }
+
+/* Leaker Flow: brand gradient utilities (centralized) */
+.bg-brand-gradient { background-image: var(--brand-gradient) !important; background-size: 150% 150%; }
+.text-brand-gradient { background: var(--brand-gradient) !important; -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Apply brand gradient to primary/secondary CTA-like elements without editing each component */
+/* Buttons (shadcn/ui sets data-slot="button") */
+[data-slot="button"].bg-primary,
+[data-slot="button"].bg-secondary {
+  background-image: var(--brand-gradient);
+  background-color: transparent;
+}
+[data-slot="button"].bg-primary:hover,
+[data-slot="button"].bg-secondary:hover { filter: brightness(1.03); }
+
+/* Links styled as buttons (common CTAs use bg-secondary) */
+a.bg-primary,
+a.bg-secondary,
+button.bg-primary,
+button.bg-secondary {
+  background-image: var(--brand-gradient);
+  background-color: transparent;
+}
+a.bg-primary:hover,
+a.bg-secondary:hover,
+button.bg-primary:hover,
+button.bg-secondary:hover { filter: brightness(1.03); }
 
 .bg-pattern-grid {
   background-image: 
